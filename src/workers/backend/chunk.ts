@@ -1,53 +1,59 @@
-
 /**
  * A Chunk is basically a holder for Uint16Array and nothing more
  * But it has some fancy attributes too, for fast updation
- * 
+ *
  * ATTENTION! In this code
  * cx, cy, cz -> Chunk Coords
  * wx, wy, wz -> World Coords (Of Voxels)
  * x, y, z -> Chunk Internal Coords (Of Voxels)
- * 
+ * cwx, cwy, cwz -> World Coords of Chunk Corner (-x, -y, -z) corner
+ *
  * 1) This implementation as well as mesher assume index x first, then z last y
  * So i = x + (z * CS) + (y * CS * CS)
  * 2) air must be 0
  */
-export const CHUNK_SIZE = 16
+export const CHUNK_SIZE = 16;
 export class Chunk {
     data: Uint16Array;
     cx: number; // chunk coordinates of -X -Y -Z corner
     cy: number;
     cz: number;
-    face_count: number;
 
     /**
      * All dirty variables must be set true if chunk is modified in anyway
      */
-    dirty_mesh: boolean = true; // to be used by mesher
     dirty_save: boolean = false; // to be used in chunk saving, set true if generated
 
     constructor(data: Uint16Array, cx: number, cy: number, cz: number) {
-        this.data = data
-        this.cx = cx
-        this.cy = cy
-        this.cz = cz
+        this.data = data;
+        this.cx = cx;
+        this.cy = cy;
+        this.cz = cz;
     }
 
     static get_chunk_coord(wx: number, wy: number, wz: number) {
-        return { cx: Math.floor(wx / 16), cy: Math.floor(wy / 16), cz: Math.floor(wz / 16) }
+        return [Math.floor(wx / 16), Math.floor(wy / 16), Math.floor(wz / 16)];
     }
 
     static index_internal(x: number, y: number, z: number) {
-        return x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE
+        return x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE;
     }
 
     /** Front is -Z, Right is +X, Top is +Y
      * Front Face must face CCW winding
      */
-    static mesh(chunk: Chunk, up: Chunk, down: Chunk, left: Chunk, right: Chunk, front: Chunk, back: Chunk) {
-        let idx = 0
-        let face_count = 0
-        let CS1 = CHUNK_SIZE - 1
+    static mesh(
+        chunk: Chunk,
+        up: Chunk,
+        down: Chunk,
+        left: Chunk,
+        right: Chunk,
+        front: Chunk,
+        back: Chunk,
+    ) {
+        let idx = 0;
+        let face_count = 0;
+        let CS1 = CHUNK_SIZE - 1;
 
         // TODO: Optimize this to remove function calls!
         /** CHATGPT version CS2 = CS * CS
@@ -106,39 +112,63 @@ export class Chunk {
                 } else {
                 face_count = chunk.face_count;
                 }
-         * 
+         *
          */
-        if (chunk.dirty_mesh) {
-            for (let y = 0; y < CHUNK_SIZE; ++y) {
-                for (let z = 0; z < CHUNK_SIZE; ++z) {
-                    for (let x = 0; x < CHUNK_SIZE; ++x, ++idx) {
-                        const block = chunk[idx]
-                        if (block === 0) continue; // skip air
-                        // -X Face
-                        if (x === 0 && left.data[Chunk.index_internal(CS1, y, z)] === 0
-                            || x > 0 && chunk.data[Chunk.index_internal(x - 1, y, z)] === 0) face_count++
-                        // +X Face
-                        if (x === CS1 && right.data[Chunk.index_internal(0, y, z)] === 0
-                            || x < CS1 && chunk.data[Chunk.index_internal(x + 1, y, z)] === 0) face_count++
-                        // -Y Face
-                        if (y === 0 && down.data[Chunk.index_internal(x, CS1, z)] === 0
-                            || y > 0 && chunk.data[Chunk.index_internal(x, y - 1, z)] === 0) face_count++
-                        // +Y Face
-                        if (y === CS1 && up.data[Chunk.index_internal(x, 0, z)] === 0
-                            || y < CS1 && chunk.data[Chunk.index_internal(x, y + 1, z)] === 0) face_count++
-                        // -Z Face
-                        if (z === 0 && back.data[Chunk.index_internal(x, y, CS1)] === 0
-                            || z > 0 && chunk.data[Chunk.index_internal(x, y, z - 1)] === 0) face_count++
-                        // +Z Face
-                        if (z === CS1 && front.data[Chunk.index_internal(x, y, 0)] === 0
-                            || z < CS1 && chunk.data[Chunk.index_internal(x, y, z + 1)] === 0) face_count++
-                    }
+        for (let y = 0; y < CHUNK_SIZE; ++y) {
+            for (let z = 0; z < CHUNK_SIZE; ++z) {
+                for (let x = 0; x < CHUNK_SIZE; ++x, ++idx) {
+                    const block = chunk[idx];
+                    if (block === 0) continue; // skip air
+                    // -X Face
+                    if (
+                        (x === 0 &&
+                            left.data[Chunk.index_internal(CS1, y, z)] === 0) ||
+                        (x > 0 &&
+                            chunk.data[Chunk.index_internal(x - 1, y, z)] === 0)
+                    )
+                        face_count++;
+                    // +X Face
+                    if (
+                        (x === CS1 &&
+                            right.data[Chunk.index_internal(0, y, z)] === 0) ||
+                        (x < CS1 &&
+                            chunk.data[Chunk.index_internal(x + 1, y, z)] === 0)
+                    )
+                        face_count++;
+                    // -Y Face
+                    if (
+                        (y === 0 &&
+                            down.data[Chunk.index_internal(x, CS1, z)] === 0) ||
+                        (y > 0 &&
+                            chunk.data[Chunk.index_internal(x, y - 1, z)] === 0)
+                    )
+                        face_count++;
+                    // +Y Face
+                    if (
+                        (y === CS1 &&
+                            up.data[Chunk.index_internal(x, 0, z)] === 0) ||
+                        (y < CS1 &&
+                            chunk.data[Chunk.index_internal(x, y + 1, z)] === 0)
+                    )
+                        face_count++;
+                    // -Z Face
+                    if (
+                        (z === 0 &&
+                            back.data[Chunk.index_internal(x, y, CS1)] === 0) ||
+                        (z > 0 &&
+                            chunk.data[Chunk.index_internal(x, y, z - 1)] === 0)
+                    )
+                        face_count++;
+                    // +Z Face
+                    if (
+                        (z === CS1 &&
+                            front.data[Chunk.index_internal(x, y, 0)] === 0) ||
+                        (z < CS1 &&
+                            chunk.data[Chunk.index_internal(x, y, z + 1)] === 0)
+                    )
+                        face_count++;
                 }
             }
-            chunk.face_count = face_count
-            chunk.dirty_mesh = false
-        } else {
-            face_count = chunk.face_count
         }
 
         const vertexCount = face_count * 4;
@@ -155,208 +185,299 @@ export class Chunk {
         let uvp = 0; // uv pointer
         let ip = 0; // index pointer
         let vert = 0; // current vertex index
+        const cwx = chunk.cx * CHUNK_SIZE;
+        const cwy = chunk.cy * CHUNK_SIZE;
+        const cwz = chunk.cz * CHUNK_SIZE;
 
-        
+        for (let y = 0; y < CHUNK_SIZE; ++y) {
+            for (let z = 0; z < CHUNK_SIZE; ++z) {
+                for (let x = 0; x < CHUNK_SIZE; ++x, ++idx) {
+                    const block = chunk[idx];
+                    if (block === 0) continue; // skip air
+
+                    const wx = cwx + x;
+                    const wy = cwy + y;
+                    const wz = cwz + z;
+                    // -X Face
+                    if (
+                        (x === 0 &&
+                            left.data[Chunk.index_internal(CS1, y, z)] === 0) ||
+                        (x > 0 &&
+                            chunk.data[Chunk.index_internal(x - 1, y, z)] === 0)
+                    ) {
+                        // positions
+                        positions[vp++] = wx;
+                        positions[vp++] = wy;
+                        positions[vp++] = wz;
+                        positions[vp++] = wx;
+                        positions[vp++] = wy + 1;
+                        positions[vp++] = wz;
+                        positions[vp++] = wx;
+                        positions[vp++] = wy + 1;
+                        positions[vp++] = wz + 1;
+                        positions[vp++] = wx;
+                        positions[vp++] = wy;
+                        positions[vp++] = wz + 1;
+
+                        // normals
+                        for (let i = 0; i < 4; i++) {
+                            normals[np++] = -1;
+                            normals[np++] = 0;
+                            normals[np++] = 0;
+                        }
+
+                        // uvs
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 0;
+
+                        // indices
+                        indices[ip++] = vert;
+                        indices[ip++] = vert + 1;
+                        indices[ip++] = vert + 2;
+                        indices[ip++] = vert;
+                        indices[ip++] = vert + 2;
+                        indices[ip++] = vert + 3;
+
+                        vert += 4;
+                    }
+                    // +X Face
+                    if (
+                        (x === CS1 &&
+                            right.data[Chunk.index_internal(0, y, z)] === 0) ||
+                        (x < CS1 &&
+                            chunk.data[Chunk.index_internal(x + 1, y, z)] === 0)
+                    ) {
+                        positions[vp++] = wx + 1;
+                        positions[vp++] = wy;
+                        positions[vp++] = wz + 1;
+                        positions[vp++] = wx + 1;
+                        positions[vp++] = wy + 1;
+                        positions[vp++] = wz + 1;
+                        positions[vp++] = wx + 1;
+                        positions[vp++] = wy + 1;
+                        positions[vp++] = wz;
+                        positions[vp++] = wx + 1;
+                        positions[vp++] = wy;
+                        positions[vp++] = wz;
+
+                        for (let i = 0; i < 4; i++) {
+                            normals[np++] = 1;
+                            normals[np++] = 0;
+                            normals[np++] = 0;
+                        }
+
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 0;
+
+                        indices[ip++] = vert;
+                        indices[ip++] = vert + 1;
+                        indices[ip++] = vert + 2;
+                        indices[ip++] = vert;
+                        indices[ip++] = vert + 2;
+                        indices[ip++] = vert + 3;
+
+                        vert += 4;
+                    }
+                    // -Y Face
+                    if (
+                        (y === 0 &&
+                            down.data[Chunk.index_internal(x, CS1, z)] === 0) ||
+                        (y > 0 &&
+                            chunk.data[Chunk.index_internal(x, y - 1, z)] === 0)
+                    ) {
+                        positions[vp++] = wx;
+                        positions[vp++] = wy;
+                        positions[vp++] = wz + 1;
+                        positions[vp++] = wx + 1;
+                        positions[vp++] = wy;
+                        positions[vp++] = wz + 1;
+                        positions[vp++] = wx + 1;
+                        positions[vp++] = wy;
+                        positions[vp++] = wz;
+                        positions[vp++] = wx;
+                        positions[vp++] = wy;
+                        positions[vp++] = wz;
+
+                        for (let i = 0; i < 4; i++) {
+                            normals[np++] = 0;
+                            normals[np++] = -1;
+                            normals[np++] = 0;
+                        }
+
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 0;
+
+                        indices[ip++] = vert;
+                        indices[ip++] = vert + 1;
+                        indices[ip++] = vert + 2;
+                        indices[ip++] = vert;
+                        indices[ip++] = vert + 2;
+                        indices[ip++] = vert + 3;
+
+                        vert += 4;
+                    }
+                    // +Y Face
+                    if (
+                        (y === CS1 &&
+                            up.data[Chunk.index_internal(x, 0, z)] === 0) ||
+                        (y < CS1 &&
+                            chunk.data[Chunk.index_internal(x, y + 1, z)] === 0)
+                    ) {
+                        positions[vp++] = wx;
+                        positions[vp++] = wy + 1;
+                        positions[vp++] = wz;
+                        positions[vp++] = wx + 1;
+                        positions[vp++] = wy + 1;
+                        positions[vp++] = wz;
+                        positions[vp++] = wx + 1;
+                        positions[vp++] = wy + 1;
+                        positions[vp++] = wz + 1;
+                        positions[vp++] = wx;
+                        positions[vp++] = wy + 1;
+                        positions[vp++] = wz + 1;
+
+                        for (let i = 0; i < 4; i++) {
+                            normals[np++] = 0;
+                            normals[np++] = 1;
+                            normals[np++] = 0;
+                        }
+
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 0;
+
+                        indices[ip++] = vert;
+                        indices[ip++] = vert + 1;
+                        indices[ip++] = vert + 2;
+                        indices[ip++] = vert;
+                        indices[ip++] = vert + 2;
+                        indices[ip++] = vert + 3;
+
+                        vert += 4;
+                    }
+                    // -Z Face
+                    if (
+                        (z === 0 &&
+                            back.data[Chunk.index_internal(x, y, CS1)] === 0) ||
+                        (z > 0 &&
+                            chunk.data[Chunk.index_internal(x, y, z - 1)] === 0)
+                    ) {
+                        positions[vp++] = wx + 1;
+                        positions[vp++] = wy;
+                        positions[vp++] = wz;
+                        positions[vp++] = wx + 1;
+                        positions[vp++] = wy + 1;
+                        positions[vp++] = wz;
+                        positions[vp++] = wx;
+                        positions[vp++] = wy + 1;
+                        positions[vp++] = wz;
+                        positions[vp++] = wx;
+                        positions[vp++] = wy;
+                        positions[vp++] = wz;
+
+                        for (let i = 0; i < 4; i++) {
+                            normals[np++] = 0;
+                            normals[np++] = 0;
+                            normals[np++] = -1;
+                        }
+
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 0;
+
+                        indices[ip++] = vert;
+                        indices[ip++] = vert + 1;
+                        indices[ip++] = vert + 2;
+                        indices[ip++] = vert;
+                        indices[ip++] = vert + 2;
+                        indices[ip++] = vert + 3;
+
+                        vert += 4;
+                    }
+                    // +Z Face
+                    if (
+                        (z === CS1 &&
+                            front.data[Chunk.index_internal(x, y, 0)] === 0) ||
+                        (z < CS1 &&
+                            chunk.data[Chunk.index_internal(x, y, z + 1)] === 0)
+                    ) {
+                        positions[vp++] = wx;
+                        positions[vp++] = wy;
+                        positions[vp++] = wz + 1;
+                        positions[vp++] = wx;
+                        positions[vp++] = wy + 1;
+                        positions[vp++] = wz + 1;
+                        positions[vp++] = wx + 1;
+                        positions[vp++] = wy + 1;
+                        positions[vp++] = wz + 1;
+                        positions[vp++] = wx + 1;
+                        positions[vp++] = wy;
+                        positions[vp++] = wz + 1;
+
+                        for (let i = 0; i < 4; i++) {
+                            normals[np++] = 0;
+                            normals[np++] = 0;
+                            normals[np++] = 1;
+                        }
+
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 0;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 1;
+                        uvs[uvp++] = 0;
+
+                        indices[ip++] = vert;
+                        indices[ip++] = vert + 1;
+                        indices[ip++] = vert + 2;
+                        indices[ip++] = vert;
+                        indices[ip++] = vert + 2;
+                        indices[ip++] = vert + 3;
+
+                        vert += 4;
+                    }
+                }
+            }
+        }
+
+        return {
+            u: uvs.buffer,
+            n: normals.buffer,
+            i: indices.buffer,
+            p: positions.buffer,
+            t: indices.BYTES_PER_ELEMENT,
+        };
     }
-
-}
-
-/* Build mesh data (positions, normals, uvs, indices) for a chunk.
-
-   - Provide an object implementing ChunkLike (data, neighbours, CHUNK_MAX,
-     indexInternal, antiIndexInternal, internalToWorld).
-   - The function returns typed arrays ready for THREE.BufferGeometry.
-
-   Usage:
-     const meshData = buildChunkMeshData(myChunk);
-     // on main thread:
-     const geom = new THREE.BufferGeometry();
-     geom.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3));
-     geom.setAttribute('normal', new THREE.BufferAttribute(meshData.normals, 3));
-     geom.setAttribute('uv', new THREE.BufferAttribute(meshData.uvs, 2));
-     geom.setIndex(new THREE.BufferAttribute(meshData.indices, 1)); // typed index buffer
-*/
-
-export type Vec3 = { x: number; y: number; z: number };
-
-export interface ChunkLike {
-    // Block storage, e.g. Uint8Array, number[]
-    data: ArrayLike<number>;
-
-    // Map strings like "-x", "+x", "-y", "+y", "-z", "+z" to neighbouring chunks or null
-    neighbours: Record<string, ChunkLike | null>;
-
-    // maximum index in each dimension (e.g. CHUNK_SIZE - 1)
-    CHUNK_MAX: number;
-
-    // helpers (implementations must be supplied by your existing chunk class)
-    indexInternal(x: number, y: number, z: number): number;
-    antiIndexInternal(i: number): [number, number, number];
-    internalToWorld(x: number, y: number, z: number): [number, number, number];
-}
-
-// You can replace this block identifier mapping with your own constants.
-export const BLOCKS = {
-    air: 0,
-    // other block ids...
-};
-
-export type MeshData = {
-    positions: Float32Array;
-    normals: Float32Array;
-    uvs: Float32Array;
-    indices: Uint16Array | Uint32Array;
-};
-
-export function buildChunkMeshData(chunk: ChunkLike, FRONT_IS_CCW = true): MeshData {
-    const positions: number[] = [];
-    const normals: number[] = [];
-    const uvs: number[] = [];
-    const indices: number[] = []; // will convert to typed array at the end
-
-    // Helper: push a vertex Vec3 into positions
-    const pushVertex = (v: Vec3) => {
-        positions.push(v.x, v.y, v.z);
-    };
-
-    // addFace similar to your Python version.
-    // faceVerts: 4 Vec3 in quad order; expectedNormal: Vec3
-    const addFace = (faceVerts: Vec3[], expectedNormal: Vec3) => {
-        const base = positions.length / 3; // index of first vertex for this face
-        // push 4 verts
-        for (let i = 0; i < 4; i++) {
-            pushVertex(faceVerts[i]);
-            normals.push(expectedNormal.x, expectedNormal.y, expectedNormal.z);
-        }
-        // placeholder/default UVs per face (you said you'll replace with custom UV later)
-        // matches your Python order: (0,0), (0,1), (1,1), (1,0)
-        uvs.push(0, 0, 0, 1, 1, 1, 1, 0);
-
-        if (FRONT_IS_CCW) {
-            // triangles: (0,1,2) and (0,2,3)
-            indices.push(base + 0, base + 1, base + 2);
-            indices.push(base + 0, base + 2, base + 3);
-        } else {
-            // flipped winding (CW)
-            indices.push(base + 0, base + 2, base + 1);
-            indices.push(base + 0, base + 3, base + 2);
-        }
-    };
-
-    const neighbours = chunk.neighbours;
-    const CHUNK_MAX = chunk.CHUNK_MAX;
-
-    // Iterate all blocks
-    for (let i = 0; i < chunk.data.length; i++) {
-        const [x, y, z] = chunk.antiIndexInternal(i);
-        const [wx, wy, wz] = chunk.internalToWorld(x, y, z);
-
-        if (chunk.data[i] === BLOCKS.air) continue;
-
-        // cube corners (same naming as your Python)
-        const v000: Vec3 = { x: wx, y: wy, z: wz };
-        const v100: Vec3 = { x: wx + 1, y: wy, z: wz };
-        const v110: Vec3 = { x: wx + 1, y: wy + 1, z: wz };
-        const v010: Vec3 = { x: wx, y: wy + 1, z: wz };
-        const v001: Vec3 = { x: wx, y: wy, z: wz + 1 };
-        const v101: Vec3 = { x: wx + 1, y: wy, z: wz + 1 };
-        const v111: Vec3 = { x: wx + 1, y: wy + 1, z: wz + 1 };
-        const v011: Vec3 = { x: wx, y: wy + 1, z: wz + 1 };
-
-        // -X face (expected normal = (-1,0,0))
-        {
-            const neighbour = neighbours["-x"];
-            const neighbourAir =
-                (x === 0 && (neighbour === null || neighbour.data[neighbour.indexInternal(CHUNK_MAX, y, z)] === BLOCKS.air)) ||
-                (x > 0 && chunk.data[chunk.indexInternal(x - 1, y, z)] === BLOCKS.air);
-
-            if (neighbourAir) {
-                addFace([v000, v010, v011, v001], { x: -1, y: 0, z: 0 });
-            }
-        }
-
-        // +X face
-        {
-            const neighbour = neighbours["+x"];
-            const neighbourAir =
-                (x === CHUNK_MAX && (neighbour === null || neighbour.data[neighbour.indexInternal(0, y, z)] === BLOCKS.air)) ||
-                (x !== CHUNK_MAX && chunk.data[chunk.indexInternal(x + 1, y, z)] === BLOCKS.air);
-
-            if (neighbourAir) {
-                addFace([v101, v111, v110, v100], { x: 1, y: 0, z: 0 });
-            }
-        }
-
-        // +Y face (top)
-        {
-            const neighbour = neighbours["+y"];
-            const neighbourAir =
-                (y === CHUNK_MAX && (neighbour === null || neighbour.data[neighbour.indexInternal(x, 0, z)] === BLOCKS.air)) ||
-                (y !== CHUNK_MAX && chunk.data[chunk.indexInternal(x, y + 1, z)] === BLOCKS.air);
-
-            if (neighbourAir) {
-                addFace([v010, v110, v111, v011], { x: 0, y: 1, z: 0 });
-            }
-        }
-
-        // -Y face (bottom)
-        {
-            const neighbour = neighbours["-y"];
-            const neighbourAir =
-                (y === 0 && (neighbour === null || neighbour.data[neighbour.indexInternal(x, CHUNK_MAX, z)] === BLOCKS.air)) ||
-                (y !== 0 && chunk.data[chunk.indexInternal(x, y - 1, z)] === BLOCKS.air);
-
-            if (neighbourAir) {
-                addFace([v000, v001, v101, v100], { x: 0, y: -1, z: 0 });
-            }
-        }
-
-        // +Z face (front)
-        {
-            const neighbour = neighbours["+z"];
-            const neighbourAir =
-                (z === CHUNK_MAX && (neighbour === null || neighbour.data[neighbour.indexInternal(x, y, 0)] === BLOCKS.air)) ||
-                (z !== CHUNK_MAX && chunk.data[chunk.indexInternal(x, y, z + 1)] === BLOCKS.air);
-
-            if (neighbourAir) {
-                addFace([v001, v011, v111, v101], { x: 0, y: 0, z: 1 });
-            }
-        }
-
-        // -Z face (back)
-        {
-            const neighbour = neighbours["-z"];
-            const neighbourAir =
-                (z === 0 && (neighbour === null || neighbour.data[neighbour.indexInternal(x, y, CHUNK_MAX)] === BLOCKS.air)) ||
-                (z !== 0 && chunk.data[chunk.indexInternal(x, y, z - 1)] === BLOCKS.air);
-
-            if (neighbourAir) {
-                addFace([v100, v110, v010, v000], { x: 0, y: 0, z: -1 });
-            }
-        }
-    } // end loop over blocks
-
-    // Convert to typed arrays
-    const positionsArr = new Float32Array(positions);
-    const normalsArr = new Float32Array(normals);
-    const uvsArr = new Float32Array(uvs);
-
-    // choose index type - prefer Uint16 if possible
-    const maxIndex = positionsArr.length / 3 - 1;
-    let indicesTyped: Uint16Array | Uint32Array;
-    if (maxIndex <= 0xffff) {
-        indicesTyped = new Uint16Array(indices);
-    } else {
-        // Must ensure the GL context supports Uint32 element indices (most modern browsers do)
-        indicesTyped = new Uint32Array(indices);
-    }
-
-    return {
-        positions: positionsArr,
-        normals: normalsArr,
-        uvs: uvsArr,
-        indices: indicesTyped,
-    };
 }
 /*
     def index(self, x, y, z):
@@ -367,14 +488,14 @@ export function buildChunkMeshData(chunk: ChunkLike, FRONT_IS_CCW = true): MeshD
         if (iy < 0 or iy >= CHUNK_SIZE): return -1
         if (iz < 0 or iz >= CHUNK_SIZE): return -1
         return self.index_internal(ix, iy, iz)
-    
+
     @staticmethod
     def anti_index_internal(i):
         x = i % CHUNK_SIZE
         y = (i // CHUNK_SIZE) % CHUNK_SIZE
         z = i // (CHUNK_SIZE * CHUNK_SIZE)
         return (x, y, z)
-    
+
     # convert coordinate system to world
     def internal_to_world(self, x, y, z):
         return (x + CHUNK_SIZE * self.chunk_coord[0], y + CHUNK_SIZE * self.chunk_coord[1], z + CHUNK_SIZE * self.chunk_coord[2])
@@ -383,7 +504,7 @@ export function buildChunkMeshData(chunk: ChunkLike, FRONT_IS_CCW = true): MeshD
     def anti_index(self, i):
         (x, y, z) = self.anti_index_internal(i)
         return (x + CHUNK_SIZE * self.chunk_coord[0], y + CHUNK_SIZE * self.chunk_coord[1], z + CHUNK_SIZE * self.chunk_coord[2])
-    
+
     # Might move this to C or GO
     # neightbours is dict with keys +y, -y, +x, -x, +z, -z, None chunks will be considered air
     # This will use basic chunk culling
@@ -395,7 +516,7 @@ export function buildChunkMeshData(chunk: ChunkLike, FRONT_IS_CCW = true): MeshD
     # My brain is dying
     # Also we will assume (-x, -y, -z) vertex of block to be its origin
     # But we will fist check if a face is hidden or not
-    
+
     # 1 day later: Code didn't worked so I used copilot (Bruh, I didn't want to use AI code directly)
     def update_geometry(self, neighbours: dict[str, "Chunk"]):
         start = time.perf_counter()
