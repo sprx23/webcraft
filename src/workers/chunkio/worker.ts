@@ -1,3 +1,4 @@
+/// <reference lib="webworker" />
 import {
     writeWorldFile,
     readWorldFileStr,
@@ -5,11 +6,16 @@ import {
     setCurrentWorld,
 } from "./../backend/filesystem";
 
-type ChunkIOMessage = {
+export type ChunkIOMessage = {
     chunk_coord: number[];
     action: "retrive" | "save";
     data?: Uint16Array;
     world_name: string;
+};
+export type ChunkIOReply = {
+    chunk_coord: number[];
+    data?: Uint16Array;
+    success: boolean;
 };
 
 const REGION_SIZE = 16;
