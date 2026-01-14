@@ -14,49 +14,49 @@
  */
 export const CHUNK_SIZE = 16;
 export class Chunk {
-    data: Uint16Array;
-    cx: number; // chunk coordinates of -X -Y -Z corner
-    cy: number;
-    cz: number;
+	data: Uint16Array;
+	cx: number; // chunk coordinates of -X -Y -Z corner
+	cy: number;
+	cz: number;
 
-    /**
-     * All dirty variables must be set true if chunk is modified in anyway
-     */
-    dirty_save: boolean = false; // to be used in chunk saving, set true if generated
+	/**
+	 * All dirty variables must be set true if chunk is modified in anyway
+	 */
+	dirty_save: boolean = false; // to be used in chunk saving, set true if generated
 
-    constructor(data: Uint16Array, cx: number, cy: number, cz: number) {
-        this.data = data;
-        this.cx = cx;
-        this.cy = cy;
-        this.cz = cz;
-    }
+	constructor(data: Uint16Array, cx: number, cy: number, cz: number) {
+		this.data = data;
+		this.cx = cx;
+		this.cy = cy;
+		this.cz = cz;
+	}
 
-    static get_chunk_coord(wx: number, wy: number, wz: number) {
-        return [Math.floor(wx / 16), Math.floor(wy / 16), Math.floor(wz / 16)];
-    }
+	static get_chunk_coord(wx: number, wy: number, wz: number) {
+		return [Math.floor(wx / 16), Math.floor(wy / 16), Math.floor(wz / 16)];
+	}
 
-    static index_internal(x: number, y: number, z: number) {
-        return x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE;
-    }
+	static index_internal(x: number, y: number, z: number) {
+		return x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE;
+	}
 
-    /** Front is -Z, Right is +X, Top is +Y
-     * Front Face must face CCW winding
-     */
-    static mesh(
-        chunk: Chunk,
-        up: Chunk,
-        down: Chunk,
-        left: Chunk,
-        right: Chunk,
-        front: Chunk,
-        back: Chunk,
-    ) {
-        let idx = 0;
-        let face_count = 0;
-        let CS1 = CHUNK_SIZE - 1;
+	/** Front is -Z, Right is +X, Top is +Y
+	 * Front Face must face CCW winding
+	 */
+	static mesh(
+		chunk: Chunk,
+		up: Chunk,
+		down: Chunk,
+		left: Chunk,
+		right: Chunk,
+		front: Chunk,
+		back: Chunk,
+	) {
+		let idx = 0;
+		let face_count = 0;
+		let CS1 = CHUNK_SIZE - 1;
 
-        // TODO: Optimize this to remove function calls!
-        /** CHATGPT version CS2 = CS * CS
+		// TODO: Optimize this to remove function calls!
+		/** CHATGPT version CS2 = CS * CS
               if (chunk.dirty_mesh) {
                 let idx = 0;
                 let face_count = 0;
@@ -114,370 +114,376 @@ export class Chunk {
                 }
          *
          */
-        for (let y = 0; y < CHUNK_SIZE; ++y) {
-            for (let z = 0; z < CHUNK_SIZE; ++z) {
-                for (let x = 0; x < CHUNK_SIZE; ++x, ++idx) {
-                    const block = chunk[idx];
-                    if (block === 0) continue; // skip air
-                    // -X Face
-                    if (
-                        (x === 0 &&
-                            left.data[Chunk.index_internal(CS1, y, z)] === 0) ||
-                        (x > 0 &&
-                            chunk.data[Chunk.index_internal(x - 1, y, z)] === 0)
-                    )
-                        face_count++;
-                    // +X Face
-                    if (
-                        (x === CS1 &&
-                            right.data[Chunk.index_internal(0, y, z)] === 0) ||
-                        (x < CS1 &&
-                            chunk.data[Chunk.index_internal(x + 1, y, z)] === 0)
-                    )
-                        face_count++;
-                    // -Y Face
-                    if (
-                        (y === 0 &&
-                            down.data[Chunk.index_internal(x, CS1, z)] === 0) ||
-                        (y > 0 &&
-                            chunk.data[Chunk.index_internal(x, y - 1, z)] === 0)
-                    )
-                        face_count++;
-                    // +Y Face
-                    if (
-                        (y === CS1 &&
-                            up.data[Chunk.index_internal(x, 0, z)] === 0) ||
-                        (y < CS1 &&
-                            chunk.data[Chunk.index_internal(x, y + 1, z)] === 0)
-                    )
-                        face_count++;
-                    // -Z Face
-                    if (
-                        (z === 0 &&
-                            back.data[Chunk.index_internal(x, y, CS1)] === 0) ||
-                        (z > 0 &&
-                            chunk.data[Chunk.index_internal(x, y, z - 1)] === 0)
-                    )
-                        face_count++;
-                    // +Z Face
-                    if (
-                        (z === CS1 &&
-                            front.data[Chunk.index_internal(x, y, 0)] === 0) ||
-                        (z < CS1 &&
-                            chunk.data[Chunk.index_internal(x, y, z + 1)] === 0)
-                    )
-                        face_count++;
-                }
-            }
-        }
+		for (let y = 0; y < CHUNK_SIZE; ++y) {
+			for (let z = 0; z < CHUNK_SIZE; ++z) {
+				for (let x = 0; x < CHUNK_SIZE; ++x, ++idx) {
+					const block = chunk[idx];
+					if (block === 0) continue; // skip air
+					// -X Face
+					if (
+						(x === 0 &&
+							left.data[Chunk.index_internal(CS1, y, z)] === 0) ||
+						(x > 0 &&
+							chunk.data[Chunk.index_internal(x - 1, y, z)] === 0)
+					)
+						face_count++;
+					// +X Face
+					if (
+						(x === CS1 &&
+							right.data[Chunk.index_internal(0, y, z)] === 0) ||
+						(x < CS1 &&
+							chunk.data[Chunk.index_internal(x + 1, y, z)] === 0)
+					)
+						face_count++;
+					// -Y Face
+					if (
+						(y === 0 &&
+							down.data[Chunk.index_internal(x, CS1, z)] === 0) ||
+						(y > 0 &&
+							chunk.data[Chunk.index_internal(x, y - 1, z)] === 0)
+					)
+						face_count++;
+					// +Y Face
+					if (
+						(y === CS1 &&
+							up.data[Chunk.index_internal(x, 0, z)] === 0) ||
+						(y < CS1 &&
+							chunk.data[Chunk.index_internal(x, y + 1, z)] === 0)
+					)
+						face_count++;
+					// -Z Face
+					if (
+						(z === 0 &&
+							back.data[Chunk.index_internal(x, y, CS1)] === 0) ||
+						(z > 0 &&
+							chunk.data[Chunk.index_internal(x, y, z - 1)] === 0)
+					)
+						face_count++;
+					// +Z Face
+					if (
+						(z === CS1 &&
+							front.data[Chunk.index_internal(x, y, 0)] === 0) ||
+						(z < CS1 &&
+							chunk.data[Chunk.index_internal(x, y, z + 1)] === 0)
+					)
+						face_count++;
+				}
+			}
+		}
 
-        const vertexCount = face_count * 4;
-        const indexCount = face_count * 6;
-        const positions = new Float32Array(vertexCount * 3);
-        const normals = new Float32Array(vertexCount * 3);
-        const uvs = new Float32Array(vertexCount * 2);
-        const indices =
-            vertexCount <= 0xffff
-                ? new Uint16Array(indexCount)
-                : new Uint32Array(indexCount);
-        let vp = 0; // position pointer
-        let np = 0; // normal pointer
-        let uvp = 0; // uv pointer
-        let ip = 0; // index pointer
-        let vert = 0; // current vertex index
-        const cwx = chunk.cx * CHUNK_SIZE;
-        const cwy = chunk.cy * CHUNK_SIZE;
-        const cwz = chunk.cz * CHUNK_SIZE;
+		const vertexCount = face_count * 4;
+		const indexCount = face_count * 6;
+		const positions = new Float32Array(vertexCount * 3);
+		const normals = new Float32Array(vertexCount * 3);
+		const uvs = new Float32Array(vertexCount * 2);
+		const indices =
+			vertexCount <= 0xffff
+				? new Uint16Array(indexCount)
+				: new Uint32Array(indexCount);
+		let vp = 0; // position pointer
+		let np = 0; // normal pointer
+		let uvp = 0; // uv pointer
+		let ip = 0; // index pointer
+		let vert = 0; // current vertex index
 
-        for (let y = 0; y < CHUNK_SIZE; ++y) {
-            for (let z = 0; z < CHUNK_SIZE; ++z) {
-                for (let x = 0; x < CHUNK_SIZE; ++x, ++idx) {
-                    const block = chunk[idx];
-                    if (block === 0) continue; // skip air
+		/**
+		 * BIG FUCK!
+		 * FIX THIS CODE TO NOT INCLUDE FUCKING WORLD coordinates
+		 * FUCK
+		 */
+		const cwx = chunk.cx * CHUNK_SIZE;
+		const cwy = chunk.cy * CHUNK_SIZE;
+		const cwz = chunk.cz * CHUNK_SIZE;
 
-                    const wx = cwx + x;
-                    const wy = cwy + y;
-                    const wz = cwz + z;
-                    // -X Face
-                    if (
-                        (x === 0 &&
-                            left.data[Chunk.index_internal(CS1, y, z)] === 0) ||
-                        (x > 0 &&
-                            chunk.data[Chunk.index_internal(x - 1, y, z)] === 0)
-                    ) {
-                        // positions
-                        positions[vp++] = wx;
-                        positions[vp++] = wy;
-                        positions[vp++] = wz;
-                        positions[vp++] = wx;
-                        positions[vp++] = wy + 1;
-                        positions[vp++] = wz;
-                        positions[vp++] = wx;
-                        positions[vp++] = wy + 1;
-                        positions[vp++] = wz + 1;
-                        positions[vp++] = wx;
-                        positions[vp++] = wy;
-                        positions[vp++] = wz + 1;
+		for (let y = 0; y < CHUNK_SIZE; ++y) {
+			for (let z = 0; z < CHUNK_SIZE; ++z) {
+				for (let x = 0; x < CHUNK_SIZE; ++x, ++idx) {
+					const block = chunk[idx];
+					if (block === 0) continue; // skip air
 
-                        // normals
-                        for (let i = 0; i < 4; i++) {
-                            normals[np++] = -1;
-                            normals[np++] = 0;
-                            normals[np++] = 0;
-                        }
+					const wx = cwx + x;
+					const wy = cwy + y;
+					const wz = cwz + z;
+					// -X Face
+					if (
+						(x === 0 &&
+							left.data[Chunk.index_internal(CS1, y, z)] === 0) ||
+						(x > 0 &&
+							chunk.data[Chunk.index_internal(x - 1, y, z)] === 0)
+					) {
+						// positions
+						positions[vp++] = wx;
+						positions[vp++] = wy;
+						positions[vp++] = wz;
+						positions[vp++] = wx;
+						positions[vp++] = wy + 1;
+						positions[vp++] = wz;
+						positions[vp++] = wx;
+						positions[vp++] = wy + 1;
+						positions[vp++] = wz + 1;
+						positions[vp++] = wx;
+						positions[vp++] = wy;
+						positions[vp++] = wz + 1;
 
-                        // uvs
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 0;
+						// normals
+						for (let i = 0; i < 4; i++) {
+							normals[np++] = -1;
+							normals[np++] = 0;
+							normals[np++] = 0;
+						}
 
-                        // indices
-                        indices[ip++] = vert;
-                        indices[ip++] = vert + 1;
-                        indices[ip++] = vert + 2;
-                        indices[ip++] = vert;
-                        indices[ip++] = vert + 2;
-                        indices[ip++] = vert + 3;
+						// uvs
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 0;
 
-                        vert += 4;
-                    }
-                    // +X Face
-                    if (
-                        (x === CS1 &&
-                            right.data[Chunk.index_internal(0, y, z)] === 0) ||
-                        (x < CS1 &&
-                            chunk.data[Chunk.index_internal(x + 1, y, z)] === 0)
-                    ) {
-                        positions[vp++] = wx + 1;
-                        positions[vp++] = wy;
-                        positions[vp++] = wz + 1;
-                        positions[vp++] = wx + 1;
-                        positions[vp++] = wy + 1;
-                        positions[vp++] = wz + 1;
-                        positions[vp++] = wx + 1;
-                        positions[vp++] = wy + 1;
-                        positions[vp++] = wz;
-                        positions[vp++] = wx + 1;
-                        positions[vp++] = wy;
-                        positions[vp++] = wz;
+						// indices
+						indices[ip++] = vert;
+						indices[ip++] = vert + 1;
+						indices[ip++] = vert + 2;
+						indices[ip++] = vert;
+						indices[ip++] = vert + 2;
+						indices[ip++] = vert + 3;
 
-                        for (let i = 0; i < 4; i++) {
-                            normals[np++] = 1;
-                            normals[np++] = 0;
-                            normals[np++] = 0;
-                        }
+						vert += 4;
+					}
+					// +X Face
+					if (
+						(x === CS1 &&
+							right.data[Chunk.index_internal(0, y, z)] === 0) ||
+						(x < CS1 &&
+							chunk.data[Chunk.index_internal(x + 1, y, z)] === 0)
+					) {
+						positions[vp++] = wx + 1;
+						positions[vp++] = wy;
+						positions[vp++] = wz + 1;
+						positions[vp++] = wx + 1;
+						positions[vp++] = wy + 1;
+						positions[vp++] = wz + 1;
+						positions[vp++] = wx + 1;
+						positions[vp++] = wy + 1;
+						positions[vp++] = wz;
+						positions[vp++] = wx + 1;
+						positions[vp++] = wy;
+						positions[vp++] = wz;
 
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 0;
+						for (let i = 0; i < 4; i++) {
+							normals[np++] = 1;
+							normals[np++] = 0;
+							normals[np++] = 0;
+						}
 
-                        indices[ip++] = vert;
-                        indices[ip++] = vert + 1;
-                        indices[ip++] = vert + 2;
-                        indices[ip++] = vert;
-                        indices[ip++] = vert + 2;
-                        indices[ip++] = vert + 3;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 0;
 
-                        vert += 4;
-                    }
-                    // -Y Face
-                    if (
-                        (y === 0 &&
-                            down.data[Chunk.index_internal(x, CS1, z)] === 0) ||
-                        (y > 0 &&
-                            chunk.data[Chunk.index_internal(x, y - 1, z)] === 0)
-                    ) {
-                        positions[vp++] = wx;
-                        positions[vp++] = wy;
-                        positions[vp++] = wz + 1;
-                        positions[vp++] = wx + 1;
-                        positions[vp++] = wy;
-                        positions[vp++] = wz + 1;
-                        positions[vp++] = wx + 1;
-                        positions[vp++] = wy;
-                        positions[vp++] = wz;
-                        positions[vp++] = wx;
-                        positions[vp++] = wy;
-                        positions[vp++] = wz;
+						indices[ip++] = vert;
+						indices[ip++] = vert + 1;
+						indices[ip++] = vert + 2;
+						indices[ip++] = vert;
+						indices[ip++] = vert + 2;
+						indices[ip++] = vert + 3;
 
-                        for (let i = 0; i < 4; i++) {
-                            normals[np++] = 0;
-                            normals[np++] = -1;
-                            normals[np++] = 0;
-                        }
+						vert += 4;
+					}
+					// -Y Face
+					if (
+						(y === 0 &&
+							down.data[Chunk.index_internal(x, CS1, z)] === 0) ||
+						(y > 0 &&
+							chunk.data[Chunk.index_internal(x, y - 1, z)] === 0)
+					) {
+						positions[vp++] = wx;
+						positions[vp++] = wy;
+						positions[vp++] = wz + 1;
+						positions[vp++] = wx + 1;
+						positions[vp++] = wy;
+						positions[vp++] = wz + 1;
+						positions[vp++] = wx + 1;
+						positions[vp++] = wy;
+						positions[vp++] = wz;
+						positions[vp++] = wx;
+						positions[vp++] = wy;
+						positions[vp++] = wz;
 
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 0;
+						for (let i = 0; i < 4; i++) {
+							normals[np++] = 0;
+							normals[np++] = -1;
+							normals[np++] = 0;
+						}
 
-                        indices[ip++] = vert;
-                        indices[ip++] = vert + 1;
-                        indices[ip++] = vert + 2;
-                        indices[ip++] = vert;
-                        indices[ip++] = vert + 2;
-                        indices[ip++] = vert + 3;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 0;
 
-                        vert += 4;
-                    }
-                    // +Y Face
-                    if (
-                        (y === CS1 &&
-                            up.data[Chunk.index_internal(x, 0, z)] === 0) ||
-                        (y < CS1 &&
-                            chunk.data[Chunk.index_internal(x, y + 1, z)] === 0)
-                    ) {
-                        positions[vp++] = wx;
-                        positions[vp++] = wy + 1;
-                        positions[vp++] = wz;
-                        positions[vp++] = wx + 1;
-                        positions[vp++] = wy + 1;
-                        positions[vp++] = wz;
-                        positions[vp++] = wx + 1;
-                        positions[vp++] = wy + 1;
-                        positions[vp++] = wz + 1;
-                        positions[vp++] = wx;
-                        positions[vp++] = wy + 1;
-                        positions[vp++] = wz + 1;
+						indices[ip++] = vert;
+						indices[ip++] = vert + 1;
+						indices[ip++] = vert + 2;
+						indices[ip++] = vert;
+						indices[ip++] = vert + 2;
+						indices[ip++] = vert + 3;
 
-                        for (let i = 0; i < 4; i++) {
-                            normals[np++] = 0;
-                            normals[np++] = 1;
-                            normals[np++] = 0;
-                        }
+						vert += 4;
+					}
+					// +Y Face
+					if (
+						(y === CS1 &&
+							up.data[Chunk.index_internal(x, 0, z)] === 0) ||
+						(y < CS1 &&
+							chunk.data[Chunk.index_internal(x, y + 1, z)] === 0)
+					) {
+						positions[vp++] = wx;
+						positions[vp++] = wy + 1;
+						positions[vp++] = wz;
+						positions[vp++] = wx + 1;
+						positions[vp++] = wy + 1;
+						positions[vp++] = wz;
+						positions[vp++] = wx + 1;
+						positions[vp++] = wy + 1;
+						positions[vp++] = wz + 1;
+						positions[vp++] = wx;
+						positions[vp++] = wy + 1;
+						positions[vp++] = wz + 1;
 
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 0;
+						for (let i = 0; i < 4; i++) {
+							normals[np++] = 0;
+							normals[np++] = 1;
+							normals[np++] = 0;
+						}
 
-                        indices[ip++] = vert;
-                        indices[ip++] = vert + 1;
-                        indices[ip++] = vert + 2;
-                        indices[ip++] = vert;
-                        indices[ip++] = vert + 2;
-                        indices[ip++] = vert + 3;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 0;
 
-                        vert += 4;
-                    }
-                    // -Z Face
-                    if (
-                        (z === 0 &&
-                            back.data[Chunk.index_internal(x, y, CS1)] === 0) ||
-                        (z > 0 &&
-                            chunk.data[Chunk.index_internal(x, y, z - 1)] === 0)
-                    ) {
-                        positions[vp++] = wx + 1;
-                        positions[vp++] = wy;
-                        positions[vp++] = wz;
-                        positions[vp++] = wx + 1;
-                        positions[vp++] = wy + 1;
-                        positions[vp++] = wz;
-                        positions[vp++] = wx;
-                        positions[vp++] = wy + 1;
-                        positions[vp++] = wz;
-                        positions[vp++] = wx;
-                        positions[vp++] = wy;
-                        positions[vp++] = wz;
+						indices[ip++] = vert;
+						indices[ip++] = vert + 1;
+						indices[ip++] = vert + 2;
+						indices[ip++] = vert;
+						indices[ip++] = vert + 2;
+						indices[ip++] = vert + 3;
 
-                        for (let i = 0; i < 4; i++) {
-                            normals[np++] = 0;
-                            normals[np++] = 0;
-                            normals[np++] = -1;
-                        }
+						vert += 4;
+					}
+					// -Z Face
+					if (
+						(z === 0 &&
+							back.data[Chunk.index_internal(x, y, CS1)] === 0) ||
+						(z > 0 &&
+							chunk.data[Chunk.index_internal(x, y, z - 1)] === 0)
+					) {
+						positions[vp++] = wx + 1;
+						positions[vp++] = wy;
+						positions[vp++] = wz;
+						positions[vp++] = wx + 1;
+						positions[vp++] = wy + 1;
+						positions[vp++] = wz;
+						positions[vp++] = wx;
+						positions[vp++] = wy + 1;
+						positions[vp++] = wz;
+						positions[vp++] = wx;
+						positions[vp++] = wy;
+						positions[vp++] = wz;
 
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 0;
+						for (let i = 0; i < 4; i++) {
+							normals[np++] = 0;
+							normals[np++] = 0;
+							normals[np++] = -1;
+						}
 
-                        indices[ip++] = vert;
-                        indices[ip++] = vert + 1;
-                        indices[ip++] = vert + 2;
-                        indices[ip++] = vert;
-                        indices[ip++] = vert + 2;
-                        indices[ip++] = vert + 3;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 0;
 
-                        vert += 4;
-                    }
-                    // +Z Face
-                    if (
-                        (z === CS1 &&
-                            front.data[Chunk.index_internal(x, y, 0)] === 0) ||
-                        (z < CS1 &&
-                            chunk.data[Chunk.index_internal(x, y, z + 1)] === 0)
-                    ) {
-                        positions[vp++] = wx;
-                        positions[vp++] = wy;
-                        positions[vp++] = wz + 1;
-                        positions[vp++] = wx;
-                        positions[vp++] = wy + 1;
-                        positions[vp++] = wz + 1;
-                        positions[vp++] = wx + 1;
-                        positions[vp++] = wy + 1;
-                        positions[vp++] = wz + 1;
-                        positions[vp++] = wx + 1;
-                        positions[vp++] = wy;
-                        positions[vp++] = wz + 1;
+						indices[ip++] = vert;
+						indices[ip++] = vert + 1;
+						indices[ip++] = vert + 2;
+						indices[ip++] = vert;
+						indices[ip++] = vert + 2;
+						indices[ip++] = vert + 3;
 
-                        for (let i = 0; i < 4; i++) {
-                            normals[np++] = 0;
-                            normals[np++] = 0;
-                            normals[np++] = 1;
-                        }
+						vert += 4;
+					}
+					// +Z Face
+					if (
+						(z === CS1 &&
+							front.data[Chunk.index_internal(x, y, 0)] === 0) ||
+						(z < CS1 &&
+							chunk.data[Chunk.index_internal(x, y, z + 1)] === 0)
+					) {
+						positions[vp++] = wx;
+						positions[vp++] = wy;
+						positions[vp++] = wz + 1;
+						positions[vp++] = wx;
+						positions[vp++] = wy + 1;
+						positions[vp++] = wz + 1;
+						positions[vp++] = wx + 1;
+						positions[vp++] = wy + 1;
+						positions[vp++] = wz + 1;
+						positions[vp++] = wx + 1;
+						positions[vp++] = wy;
+						positions[vp++] = wz + 1;
 
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 0;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 1;
-                        uvs[uvp++] = 0;
+						for (let i = 0; i < 4; i++) {
+							normals[np++] = 0;
+							normals[np++] = 0;
+							normals[np++] = 1;
+						}
 
-                        indices[ip++] = vert;
-                        indices[ip++] = vert + 1;
-                        indices[ip++] = vert + 2;
-                        indices[ip++] = vert;
-                        indices[ip++] = vert + 2;
-                        indices[ip++] = vert + 3;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 0;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 1;
+						uvs[uvp++] = 0;
 
-                        vert += 4;
-                    }
-                }
-            }
-        }
+						indices[ip++] = vert;
+						indices[ip++] = vert + 1;
+						indices[ip++] = vert + 2;
+						indices[ip++] = vert;
+						indices[ip++] = vert + 2;
+						indices[ip++] = vert + 3;
 
-        return {
-            u: uvs.buffer,
-            n: normals.buffer,
-            i: indices.buffer,
-            p: positions.buffer,
-            t: indices.BYTES_PER_ELEMENT,
-        };
-    }
+						vert += 4;
+					}
+				}
+			}
+		}
+
+		return {
+			u: uvs.buffer,
+			n: normals.buffer,
+			i: indices.buffer,
+			p: positions.buffer,
+			t: indices.BYTES_PER_ELEMENT,
+		};
+	}
 }
 /*
     def index(self, x, y, z):
