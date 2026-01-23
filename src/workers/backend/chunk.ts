@@ -1,3 +1,6 @@
+import { CHUNK_SIZE } from "../../constants";
+
+export const IS_COLUMN_CHUNK = true;
 /**
  * A Chunk is basically a holder for Uint16Array and nothing more
  * But it has some fancy attributes too, for fast updation
@@ -11,13 +14,17 @@
  * 1) This implementation as well as mesher assume index x first, then z last y
  * So i = x + (z * CS) + (y * CS * CS)
  * 2) air must be 0
+ *
+ * 16/01/2026 - much code and 10 days later, I had changed my mind to use column
+ * chunks and not cubic chunks
+ * Ahhh... the pain of refactoring this shit
+ * But for now will keep it cubic, fuck I ain't refactoring today.
  */
-export const CHUNK_SIZE = 16;
 export class Chunk {
 	data: Uint16Array;
-	cx: number; // chunk coordinates of -X -Y -Z corner
-	cy: number;
-	cz: number;
+	readonly cx: number; // chunk coordinates of -X -Y -Z corner
+	readonly cy: number;
+	readonly cz: number;
 
 	/**
 	 * All dirty variables must be set true if chunk is modified in anyway
@@ -29,13 +36,16 @@ export class Chunk {
 		this.cx = cx;
 		this.cy = cy;
 		this.cz = cz;
+		if (IS_COLUMN_CHUNK && cy !== 0)
+			throw new Error("COLUMN_CHUNK enabled but cy != 0");
 	}
 
 	static get_chunk_coord(wx: number, wy: number, wz: number) {
 		return [Math.floor(wx / 16), Math.floor(wy / 16), Math.floor(wz / 16)];
 	}
 
-	static index_internal(x: number, y: number, z: number) {
+	// unsafe for sake of speed!!
+	static unsafe_index_internal(x: number, y: number, z: number) {
 		return x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE;
 	}
 
@@ -122,49 +132,70 @@ export class Chunk {
 					// -X Face
 					if (
 						(x === 0 &&
-							left.data[Chunk.index_internal(CS1, y, z)] === 0) ||
+							left.data[
+								Chunk.unsafe_index_internal(CS1, y, z)
+							] === 0) ||
 						(x > 0 &&
-							chunk.data[Chunk.index_internal(x - 1, y, z)] === 0)
+							chunk.data[
+								Chunk.unsafe_index_internal(x - 1, y, z)
+							] === 0)
 					)
 						face_count++;
 					// +X Face
 					if (
 						(x === CS1 &&
-							right.data[Chunk.index_internal(0, y, z)] === 0) ||
+							right.data[Chunk.unsafe_index_internal(0, y, z)] ===
+								0) ||
 						(x < CS1 &&
-							chunk.data[Chunk.index_internal(x + 1, y, z)] === 0)
+							chunk.data[
+								Chunk.unsafe_index_internal(x + 1, y, z)
+							] === 0)
 					)
 						face_count++;
 					// -Y Face
 					if (
 						(y === 0 &&
-							down.data[Chunk.index_internal(x, CS1, z)] === 0) ||
+							down.data[
+								Chunk.unsafe_index_internal(x, CS1, z)
+							] === 0) ||
 						(y > 0 &&
-							chunk.data[Chunk.index_internal(x, y - 1, z)] === 0)
+							chunk.data[
+								Chunk.unsafe_index_internal(x, y - 1, z)
+							] === 0)
 					)
 						face_count++;
 					// +Y Face
 					if (
 						(y === CS1 &&
-							up.data[Chunk.index_internal(x, 0, z)] === 0) ||
+							up.data[Chunk.unsafe_index_internal(x, 0, z)] ===
+								0) ||
 						(y < CS1 &&
-							chunk.data[Chunk.index_internal(x, y + 1, z)] === 0)
+							chunk.data[
+								Chunk.unsafe_index_internal(x, y + 1, z)
+							] === 0)
 					)
 						face_count++;
 					// -Z Face
 					if (
 						(z === 0 &&
-							back.data[Chunk.index_internal(x, y, CS1)] === 0) ||
+							back.data[
+								Chunk.unsafe_index_internal(x, y, CS1)
+							] === 0) ||
 						(z > 0 &&
-							chunk.data[Chunk.index_internal(x, y, z - 1)] === 0)
+							chunk.data[
+								Chunk.unsafe_index_internal(x, y, z - 1)
+							] === 0)
 					)
 						face_count++;
 					// +Z Face
 					if (
 						(z === CS1 &&
-							front.data[Chunk.index_internal(x, y, 0)] === 0) ||
+							front.data[Chunk.unsafe_index_internal(x, y, 0)] ===
+								0) ||
 						(z < CS1 &&
-							chunk.data[Chunk.index_internal(x, y, z + 1)] === 0)
+							chunk.data[
+								Chunk.unsafe_index_internal(x, y, z + 1)
+							] === 0)
 					)
 						face_count++;
 				}
@@ -207,9 +238,13 @@ export class Chunk {
 					// -X Face
 					if (
 						(x === 0 &&
-							left.data[Chunk.index_internal(CS1, y, z)] === 0) ||
+							left.data[
+								Chunk.unsafe_index_internal(CS1, y, z)
+							] === 0) ||
 						(x > 0 &&
-							chunk.data[Chunk.index_internal(x - 1, y, z)] === 0)
+							chunk.data[
+								Chunk.unsafe_index_internal(x - 1, y, z)
+							] === 0)
 					) {
 						// positions
 						positions[vp++] = wx;
@@ -255,9 +290,12 @@ export class Chunk {
 					// +X Face
 					if (
 						(x === CS1 &&
-							right.data[Chunk.index_internal(0, y, z)] === 0) ||
+							right.data[Chunk.unsafe_index_internal(0, y, z)] ===
+								0) ||
 						(x < CS1 &&
-							chunk.data[Chunk.index_internal(x + 1, y, z)] === 0)
+							chunk.data[
+								Chunk.unsafe_index_internal(x + 1, y, z)
+							] === 0)
 					) {
 						positions[vp++] = wx + 1;
 						positions[vp++] = wy;
@@ -299,9 +337,13 @@ export class Chunk {
 					// -Y Face
 					if (
 						(y === 0 &&
-							down.data[Chunk.index_internal(x, CS1, z)] === 0) ||
+							down.data[
+								Chunk.unsafe_index_internal(x, CS1, z)
+							] === 0) ||
 						(y > 0 &&
-							chunk.data[Chunk.index_internal(x, y - 1, z)] === 0)
+							chunk.data[
+								Chunk.unsafe_index_internal(x, y - 1, z)
+							] === 0)
 					) {
 						positions[vp++] = wx;
 						positions[vp++] = wy;
@@ -343,9 +385,12 @@ export class Chunk {
 					// +Y Face
 					if (
 						(y === CS1 &&
-							up.data[Chunk.index_internal(x, 0, z)] === 0) ||
+							up.data[Chunk.unsafe_index_internal(x, 0, z)] ===
+								0) ||
 						(y < CS1 &&
-							chunk.data[Chunk.index_internal(x, y + 1, z)] === 0)
+							chunk.data[
+								Chunk.unsafe_index_internal(x, y + 1, z)
+							] === 0)
 					) {
 						positions[vp++] = wx;
 						positions[vp++] = wy + 1;
@@ -387,9 +432,13 @@ export class Chunk {
 					// -Z Face
 					if (
 						(z === 0 &&
-							back.data[Chunk.index_internal(x, y, CS1)] === 0) ||
+							back.data[
+								Chunk.unsafe_index_internal(x, y, CS1)
+							] === 0) ||
 						(z > 0 &&
-							chunk.data[Chunk.index_internal(x, y, z - 1)] === 0)
+							chunk.data[
+								Chunk.unsafe_index_internal(x, y, z - 1)
+							] === 0)
 					) {
 						positions[vp++] = wx + 1;
 						positions[vp++] = wy;
@@ -431,9 +480,12 @@ export class Chunk {
 					// +Z Face
 					if (
 						(z === CS1 &&
-							front.data[Chunk.index_internal(x, y, 0)] === 0) ||
+							front.data[Chunk.unsafe_index_internal(x, y, 0)] ===
+								0) ||
 						(z < CS1 &&
-							chunk.data[Chunk.index_internal(x, y, z + 1)] === 0)
+							chunk.data[
+								Chunk.unsafe_index_internal(x, y, z + 1)
+							] === 0)
 					) {
 						positions[vp++] = wx;
 						positions[vp++] = wy;

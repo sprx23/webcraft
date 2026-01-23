@@ -5,7 +5,9 @@
  */
 
 // chunk related
+// this was once supposed to be cubic chunks but I gave up on that idea
 export const CHUNK_SIZE = 16;
+export const CHUNK_HEIGHT = 128; // basically world height
 export const REGION_SIZE = 16;
 export const TEXTURE_SIZE = 16; // must be applied for all blocks
 export const MAX_TEXTURE_ATLAS_SIZE = 4096;
@@ -89,5 +91,4 @@ export type PlayerState = {
 	pcy: number;
 	pcz: number;
 	renderXZ: number;
-	renderY: number;
 };

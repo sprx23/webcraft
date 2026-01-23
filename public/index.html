@@ -1,34 +1,68 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>WebCraft</title>
+		<link rel="stylesheet" href="./index.css" />
+	</head>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebCraft</title>
-    <link rel="stylesheet" href="./index.css">
-</head>
-
-<body>
-    <div id="main-menu" class="scene">
-        <h1 style="text-align: center; border-bottom: 1px solid white;">WebCraft</h1>
-        <p id="intropara" style="text-align: center; margin: 0px 20px; font-size: smaller; border-bottom: 1px solid white;">pycraft and pycraft 1.2 were failure. While
-            pycraft was total failure at rendering even 2000 blocks, pycraft 1.2 did rendered 1.4 million block at 60 FPS,
-            it was still bad with all shuttering at geometry generation and calculations. JS is intended to be better than
-            PY for this job.<br>
-            <button style="float: right;" id="nevershow" class="mc-button">Never show this again</button>
-        </p>
-        <h3>Your Worlds (IndexedDB Storage)</h3>
-        <button class="mc-button">Create New World</button>
-        <button class="mc-button">Import World</button>
-        <table>
-            <tbody id="world_list"></tbody>
-        </table>
-    </div>
-    <div id="game" class="scene">
-        <pre id="game-chat" style="background-color: #00000055; position: fixed; left: 0px; bottom: 40px; width: 60vw; max-height: 60vh; overflow-y: scroll;"></pre>
-        <p id="game-loadingtext" style="position: fixed; top: 50vh; text-align: center; width: 100%;">Loading World 0%</p>
-    </div>
-    <script src="../dist/main.js"></script>
-</body>
-
+	<body>
+		<div id="main-menu" class="scene">
+			<h1 style="text-align: center; border-bottom: 1px solid white">
+				WebCraft
+			</h1>
+			<p
+				id="intropara"
+				style="
+					text-align: center;
+					margin: 0px 20px;
+					font-size: smaller;
+					border-bottom: 1px solid white;
+				"
+			>
+				pycraft and pycraft 1.2 were failure. While pycraft was total
+				failure at rendering even 2000 blocks, pycraft 1.2 did rendered
+				1.4 million block at 60 FPS, it was still bad with all
+				shuttering at geometry generation and calculations. JS is
+				intended to be better than PY for this job.<br />
+				<button style="float: right" id="nevershow" class="mc-button">
+					Never show this again
+				</button>
+			</p>
+			<h3>Your Worlds (IndexedDB Storage)</h3>
+			<button class="mc-button">Create New World</button>
+			<button class="mc-button">Import World</button>
+			<table>
+				<tbody id="world_list"></tbody>
+			</table>
+		</div>
+		<div id="game" class="scene">
+			<pre
+				id="game-chat"
+				style="
+					background-color: #00000055;
+					position: fixed;
+					left: 0px;
+					bottom: 40px;
+					width: 60vw;
+					max-height: 60vh;
+					overflow-y: scroll;
+				"
+			></pre>
+			<p
+				id="game-loadingtext"
+				style="
+					position: fixed;
+					top: 50vh;
+					text-align: center;
+					width: 100%;
+					font-size: smaller;
+				"
+			>
+				Loading World 0%
+			</p>
+		</div>
+		<script src="../dist/bundle.js"></script>
+	</body>
 </html>

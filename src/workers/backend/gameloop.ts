@@ -1,69 +1,79 @@
+import { ChunkIOReply } from "../../constants";
 import { FirstInLastOutArray, CoordinateSet } from "./utils";
 import { World } from "./world";
 
-const TPS = 20;
-const MS_PER_TICK = 1000 / TPS;
-const tpsTimestamps = new FirstInLastOutArray<number>(TPS);
-tpsTimestamps.fill(0);
-const tickTimeLog = new FirstInLastOutArray<number>(TPS);
-tickTimeLog.fill(0);
-const meshingTimeLog = new FirstInLastOutArray<number>(TPS);
-meshingTimeLog.fill(0);
-
-let avgTickMS = 1; // should not be 0
-let avgMeshingMS = 1;
-let currentTPS = TPS;
-let world: World = null;
-const chunkio: Worker = new Worker("../dist/chunkio.js");
-const scheduledForMesh = new CoordinateSet();
-
-chunkio.addEventListener("message", (e) => {});
-
-function startGame(w: World) {
-	world = w;
-	gameLoop();
-}
-
-function gameLoop() {
-	const tickstart = performance.now();
-	gameTick();
-	const tickend = performance.now();
-	const timeSpent1 = tickend - tickstart;
-	tickTimeLog.push(timeSpent1);
-	tpsTimestamps.push(tickend);
-
-	const meshingstart = performance.now();
-	let howMany = (MS_PER_TICK - timeSpent1) / avgMeshingMS;
-	if (howMany < 1) howMany = 1;
-	meshingTask(howMany);
-	const meshingend = performance.now();
-	const timeSpent2 = meshingend - meshingstart;
-	meshingTimeLog.push(timeSpent2 / howMany);
-
-	// calculations...
-	// for avgMeshingMS
-	avgMeshingMS = meshingTimeLog.getArray().reduce((x, y) => x + y) / TPS;
-	avgTickMS = tickTimeLog.getArray().reduce((x, y) => x + y) / TPS;
-	currentTPS = tpsTimestamps
-		.getArray()
-		.filter((x) => meshingend - x < 1000).length;
-
-	// finally schedule next run
-	const waitingTime = Math.max(0, MS_PER_TICK - timeSpent1 - timeSpent2 - 1);
-	// we will start 1 ms earlier to fight against browser trottle
-	setTimeout(gameLoop, waitingTime);
-}
-
-function gameTick() {
-	// do other tasks such as chunk loading and generation
-	// since they are done on a seperate thread, we will just schedule them all
-	for (const ccoord of world.scheduledLoad) {
-	}
-}
-
-function meshingTask(maxMeshingAllowed: number) {}
-
 export class GameLoop {
-	world: World;
-	constructor() {}
+	private readonly TPS = 20;
+	private readonly MS_PER_TICK = 1000 / this.TPS;
+
+	private tpsTimestamps = new FirstInLastOutArray<number>(this.TPS);
+	private tickTimeLog = new FirstInLastOutArray<number>(this.TPS);
+	private meshingTimeLog = new FirstInLastOutArray<number>(this.TPS);
+
+	private avgTickMS = 1;
+	private avgMeshingMS = 1;
+	private currentTPS = this.TPS;
+
+	private world: World = null;
+	private chunkio = new Worker("../dist/chunkio.js");
+	private scheduledForMesh = new CoordinateSet();
+
+	constructor() {
+		this.tpsTimestamps.fill(0);
+		this.tickTimeLog.fill(0);
+		this.meshingTimeLog.fill(0);
+
+		this.chunkio.addEventListener(
+			"message",
+			(e: MessageEvent<ChunkIOReply>) => {},
+		);
+	}
+
+	start(world: World) {
+		this.world = world;
+		this.loop();
+	}
+
+	loop() {
+		const tickStart = performance.now();
+		this.gameTick();
+		const tickEnd = performance.now();
+
+		const tickMS = tickEnd - tickStart;
+		this.tickTimeLog.push(tickMS);
+		this.tpsTimestamps.push(tickEnd);
+
+		const meshStart = performance.now();
+		let maxMesh = (this.MS_PER_TICK - tickMS) / this.avgMeshingMS;
+		if (maxMesh < 1) maxMesh = 1;
+		this.meshingTask(maxMesh);
+		const meshEnd = performance.now();
+
+		const meshMS = meshEnd - meshStart;
+		this.meshingTimeLog.push(meshMS / maxMesh);
+
+		this.avgTickMS =
+			this.tickTimeLog.getArray().reduce((a, b) => a + b) / this.TPS;
+		this.avgMeshingMS =
+			this.meshingTimeLog.getArray().reduce((a, b) => a + b) / this.TPS;
+		this.currentTPS = this.tpsTimestamps
+			.getArray()
+			.filter((t) => meshEnd - t < 1000).length;
+
+		const wait = Math.max(0, this.MS_PER_TICK - tickMS - meshMS - 1);
+		setTimeout(this.loop, wait);
+	}
+
+	gameTick() {
+		if (!this.world) return;
+		for (const ccoord of this.world.scheduledLoad) {
+			// schedule load
+		}
+	}
+
+	meshingTask(maxMeshingAllowed: number) {
+		// meshing logic
+	}
+
+	onChunk;
 }

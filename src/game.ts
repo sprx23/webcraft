@@ -16,6 +16,8 @@ import {
 } from "./constants";
 import { registerScene } from "./scene";
 import { CoordinateSet } from "./workers/backend/utils";
+// @ts-ignore
+import BackendWorker from "./workers/backend/backend.worker";
 
 registerScene("game", "inbuilt", () => new Game("test"));
 
@@ -49,7 +51,7 @@ export class Game {
 	scheduledRender = new CoordinateSet(); // backend has been told of these chunk coordinates but they can be cancelled
 
 	constructor(world: string) {
-		this.backend = new Worker("../dist/backend.js");
+		this.backend = new BackendWorker();
 		// Without bind this would refer to worker in class method! ABSURD!!
 		this.backend.onmessage = this.backendMessageHandler.bind(this);
 		this.backend.postMessage({ type: "init", world });
@@ -199,7 +201,39 @@ export class Game {
 	 * this thing only schedules chunk render data from backend
 	 */
 	chunkRenderer() {
-		// basically load chunks around player
+		if (!this.playerState) return;
+		if (
+			this.playerState.pcx === this.old_pcx &&
+			this.playerState.pcz === this.old_pcz
+		)
+			return;
+
+		const cxmax = this.playerState.pcx + this.playerState.renderXZ;
+		const cxmin = this.playerState.pcx - this.playerState.renderXZ;
+		const czmax = this.playerState.pcz + this.playerState.renderXZ;
+		const czmin = this.playerState.pcz - this.playerState.renderXZ;
+
+		const chunksToRender: [number, number][] = new Array(
+			this.playerState.renderXZ * this.playerState.renderXZ,
+		);
+		for (let z = czmin; z <= czmax; z++) {
+			for (let x = cxmin; x <= cxmax; x++) {
+				chunksToRender.push([x, z]);
+			}
+		}
+		const names = chunksToRender.map(([x, z]) => `${x},${z}`);
+
+		// now we know which chunks should be rendered
+		// let's first throw out chunks
+		for (let i = 0; i < this.chunks.length; i++) {
+			const chunk = this.chunks[i];
+			if (names.includes(chunk.name)) continue;
+			this.scene.remove(chunk);
+			chunk.geometry.dispose();
+			// @ts-ignore
+			chunk.material.dispose();
+			this.chunks.splice(i, 1);
+		}
 	}
 
 	/**
