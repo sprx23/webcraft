@@ -67,13 +67,14 @@ async function messageHandler(e: MessageEvent<ChunkIOMessage>) {
 	 * For storing, every chunk has a region assosicated with it
 	 * Region
 	 */
+
 	if (msg.type == ChunkIOMessageType.LOAD_CHUNK) {
 		const data = new Uint16Array(16 * 16 * 16);
 		for (let i = 0; i < 256; i++) {
 			data[i] = 1;
 		}
 		backend_msgport.postMessage({
-			chunkCoord: msg.chunk_coord,
+			chunk_coord: msg.chunk_coord,
 			data: data.buffer,
 			success: true,
 		}, [data.buffer]);

@@ -1,4 +1,4 @@
-import { ChunkIOReply } from "../../constants";
+import { ChunkIOMessageType, ChunkIOReply } from "../../constants";
 import { FirstInLastOutArray, CoordinateSet } from "./utils";
 import { World } from "./world";
 import { Chunk } from "./chunk";
@@ -25,9 +25,7 @@ export class GameLoop {
 		this.meshingTimeLog.fill(0);
 
 		this.chunkio = chunkio;
-		this.chunkio.addEventListener("message",
-			(e: MessageEvent<ChunkIOReply>) => this.onChunkDataArrival(e.data),
-		);
+		this.chunkio.onmessage = (e: MessageEvent<ChunkIOReply>) => this.onChunkDataArrival(e.data);
 	}
 
 	start(world: World) {
@@ -69,13 +67,13 @@ export class GameLoop {
 		if (!this.world) return;
 
 		this.world.chunkLoader();
-		console.log(this.world.scheduledLoad.size);
 		for (const ccoord of this.world.scheduledLoad) {
-			console.log(ccoord);
 			this.chunkio.postMessage({
 				world_name: this.world.name,
-				action: "retrive",
+				type: ChunkIOMessageType.LOAD_CHUNK,
+				chunk_coord: ccoord
 			});
+			this.world.scheduledLoad.delete(ccoord);
 		}
 	}
 
@@ -84,7 +82,6 @@ export class GameLoop {
 	}
 
 	onChunkDataArrival(reply: ChunkIOReply) {
-		console.log(reply);
 		// so read coord and put it inside world
 		if (reply.success) {
 			// I have written it like this for a reason

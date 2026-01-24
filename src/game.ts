@@ -22,7 +22,7 @@ export class ControllerData {
  * suckless.org ppl should know classes keep code organized
  */
 export class Game {
-	backend: Worker;
+	backend: Worker
 	chunkio: Worker;
 	scene: Scene;
 	camera: PerspectiveCamera;

@@ -26,11 +26,15 @@ export class World {
 	pcx: number;
 	pcy: number;
 	pcz: number;
+	renderXZ = 2; // render distance
+	renderY = 0; // mostly useless constant
+	old_pcx: number;
+	old_pcy: number;
+	old_pcz: number;
+
 	chunks = new Map3D();
 	scheduledLoad = new CoordinateSet(); // chunk coords that are scheduled for load
 	scheduledMeshing = new CoordinateSet(); // above but for meshing
-	renderXZ: 2; // render distance
-	renderY: 2; // mostly useless constant
 
 	/**
 	 * Will do later, it is pain
@@ -67,6 +71,11 @@ export class World {
 		);
 		((this.pcx = pcx), (this.pcy = pcy), (this.pcz = pcz));
 
+		if (pcx === this.old_pcx && pcy === this.old_pcy && pcz === this.old_pcz) return;
+		this.old_pcx = pcx;
+		this.old_pcy = pcy;
+		this.old_pcz = pcz;
+
 		// rendering is handled by ui thread
 		// my head is boiling, so tolerate this trash code whoever might be extending this in future
 		const maxRendered =
@@ -80,6 +89,8 @@ export class World {
 		const cymin = pcy - this.renderY;
 		const czmax = pcz + this.renderXZ;
 		const czmin = pcz - this.renderXZ;
+
+		console.log(cxmax, cxmin, cymax, cymin, czmax, czmin);
 
 		// first unload chunks if required
 		const totalLoadOrInLoad = this.chunks.size; //+ this.scheduledLoad.length // removed bcz idk
@@ -103,15 +114,12 @@ export class World {
 			listOfFarOnes = listOfFarOnes.sort((x, y) => d2func(y) - d2func(x));
 
 			// now remove far chunks
-			// fuck this
 			howManyToRemove = Math.min(howManyToRemove, listOfFarOnes.length);
 			for (let i = 0; i < howManyToRemove; i++) {
-				// unload shit
 				this.unloadChunk(listOfFarOnes[i]);
 			}
 		}
 
-		// now load shit into toilet i mean this.chunks
 		// but first we need to shit those coords in scheduled
 		// otherwise it wouldn't be good
 		let listOfChunksToLoadOrIDKNotLoad = [];
@@ -124,6 +132,8 @@ export class World {
 				}
 			}
 		}
+
+		console.log(listOfChunksToLoadOrIDKNotLoad)
 
 		const d2func = (x: Chunk) =>
 			sq(x.cx - pcx) + sq(x.cy - pcy) + sq(x.cz - pcz);
