@@ -65,12 +65,13 @@ export enum FrontendMessageType {
 	INIT_WORLD,
 	SYNC_PLAYER_STATE,
 	MOD_COMM,
+	SET_CHUNKIO_THREAD_MSGPORT,
 }
 
 export type ChunkIOMessage = {
 	chunk_coord?: [number, number, number];
 	chunk_coords?: [number, number, number][];
-	action: "retrive" | "save";
+	type: ChunkIOMessageType;
 	data?: Uint16Array;
 	world_name: string;
 };
@@ -79,6 +80,11 @@ export type ChunkIOReply = {
 	data?: Uint16Array;
 	success: boolean;
 };
+export enum ChunkIOMessageType {
+	SET_BACKEND_THREAD_MSGPORT,
+	SAVE_CHUNK,
+	LOAD_CHUNK,
+}
 
 // I guess we will not have any player class
 // but just a state
@@ -91,4 +97,5 @@ export type PlayerState = {
 	pcy: number;
 	pcz: number;
 	renderXZ: number;
+	renderY: number;
 };

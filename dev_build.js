@@ -10,6 +10,9 @@ const options = {
 	platform: "browser",
 	minify: true,
 	sourcemap: false,
+	define: {
+		__BUILD_TIME__: JSON.stringify(new Date().toLocaleString("en-GB"))
+	},
 	plugins: [inlineWorker()], // enables worker rebuilds
 };
 

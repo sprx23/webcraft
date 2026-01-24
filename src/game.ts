@@ -1,23 +1,11 @@
-import {
-	AmbientLight,
-	Color,
-	DirectionalLight,
-	Mesh,
-	PerspectiveCamera,
-	Scene,
-	Vector3,
-	WebGLRenderer,
-} from "three";
-import {
-	BackendMessage,
-	BackendMessageType,
-	MAX_CHAT_LINES,
-	PlayerState,
-} from "./constants";
+import { AmbientLight, Color, DirectionalLight, Mesh, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
+import { BackendMessage, BackendMessageType, ChunkIOMessageType, FrontendMessageType, MAX_CHAT_LINES, PlayerState } from "./constants";
 import { registerScene } from "./scene";
 import { CoordinateSet } from "./workers/backend/utils";
 // @ts-ignore
 import BackendWorker from "./workers/backend/backend.worker";
+// @ts-ignore
+import ChunkIOWorker from "./workers/chunkio/chunkio.worker";
 
 registerScene("game", "inbuilt", () => new Game("test"));
 
@@ -35,6 +23,7 @@ export class ControllerData {
  */
 export class Game {
 	backend: Worker;
+	chunkio: Worker;
 	scene: Scene;
 	camera: PerspectiveCamera;
 	renderer: WebGLRenderer;
@@ -50,14 +39,28 @@ export class Game {
 	chunks: Mesh[] = []; // coordinates would be given by Mesh.name!
 	scheduledRender = new CoordinateSet(); // backend has been told of these chunk coordinates but they can be cancelled
 
-	constructor(world: string) {
+	constructor(world_name: string) {
 		this.backend = new BackendWorker();
+		this.chunkio = new ChunkIOWorker();
+
+		// Setup communications between the two threads
+		const channel = new MessageChannel();
+		this.backend.postMessage({
+			type: FrontendMessageType.SET_CHUNKIO_THREAD_MSGPORT,
+		}, [channel.port1]);
+		this.chunkio.postMessage({
+			type: ChunkIOMessageType.SET_BACKEND_THREAD_MSGPORT,
+		}, [channel.port2]);
+
 		// Without bind this would refer to worker in class method! ABSURD!!
 		this.backend.onmessage = this.backendMessageHandler.bind(this);
-		this.backend.postMessage({ type: "init", world });
+		this.backend.postMessage({
+			type: FrontendMessageType.INIT_WORLD,
+			world_name,
+		});
 
 		// now initialize screen to show loading stuff
-		this.writeChatMessage("Loading " + world);
+		this.writeChatMessage("Loading " + world_name);
 	}
 
 	// very very important method
@@ -205,8 +208,7 @@ export class Game {
 		if (
 			this.playerState.pcx === this.old_pcx &&
 			this.playerState.pcz === this.old_pcz
-		)
-			return;
+		) return;
 
 		const cxmax = this.playerState.pcx + this.playerState.renderXZ;
 		const cxmin = this.playerState.pcx - this.playerState.renderXZ;

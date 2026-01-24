@@ -1,6 +1,7 @@
 import { ChunkIOReply } from "../../constants";
 import { FirstInLastOutArray, CoordinateSet } from "./utils";
 import { World } from "./world";
+import { Chunk } from "./chunk";
 
 export class GameLoop {
 	private readonly TPS = 20;
@@ -15,17 +16,17 @@ export class GameLoop {
 	private currentTPS = this.TPS;
 
 	private world: World = null;
-	private chunkio = new Worker("../dist/chunkio.js");
 	private scheduledForMesh = new CoordinateSet();
+	chunkio: MessagePort = null;
 
-	constructor() {
+	constructor(chunkio: MessagePort) {
 		this.tpsTimestamps.fill(0);
 		this.tickTimeLog.fill(0);
 		this.meshingTimeLog.fill(0);
 
-		this.chunkio.addEventListener(
-			"message",
-			(e: MessageEvent<ChunkIOReply>) => {},
+		this.chunkio = chunkio;
+		this.chunkio.addEventListener("message",
+			(e: MessageEvent<ChunkIOReply>) => this.onChunkDataArrival(e.data),
 		);
 	}
 
@@ -61,13 +62,20 @@ export class GameLoop {
 			.filter((t) => meshEnd - t < 1000).length;
 
 		const wait = Math.max(0, this.MS_PER_TICK - tickMS - meshMS - 1);
-		setTimeout(this.loop, wait);
+		setTimeout(() => this.loop(), wait);
 	}
 
 	gameTick() {
 		if (!this.world) return;
+
+		this.world.chunkLoader();
+		console.log(this.world.scheduledLoad.size);
 		for (const ccoord of this.world.scheduledLoad) {
-			// schedule load
+			console.log(ccoord);
+			this.chunkio.postMessage({
+				world_name: this.world.name,
+				action: "retrive",
+			});
 		}
 	}
 
@@ -75,5 +83,22 @@ export class GameLoop {
 		// meshing logic
 	}
 
-	onChunk;
+	onChunkDataArrival(reply: ChunkIOReply) {
+		console.log(reply);
+		// so read coord and put it inside world
+		if (reply.success) {
+			// I have written it like this for a reason
+			const chunk = new Chunk(
+				reply.data,
+				reply.chunk_coord[0],
+				reply.chunk_coord[1],
+				reply.chunk_coord[2],
+			);
+			this.world.chunks.set(reply.chunk_coord, chunk);
+		} else {
+			this.world?.sendDebugMessage(
+				"Failed to load chunk for reasons. Check console.",
+			);
+		}
+	}
 }

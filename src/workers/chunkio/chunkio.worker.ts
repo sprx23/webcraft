@@ -1,11 +1,6 @@
 /// <reference lib="webworker" />
-import { ChunkIOMessage } from "../../constants";
-import {
-	writeWorldFile,
-	readWorldFileStr,
-	readWorldFile,
-	setCurrentWorld,
-} from "./../backend/filesystem";
+import { ChunkIOMessage, ChunkIOMessageType } from "../../constants";
+import { setCurrentWorld } from "./../backend/filesystem";
 
 /**
  * Data that is saved in world.json file
@@ -34,9 +29,20 @@ type Mod = {
 
 let world_name = "";
 let world_json: WorldJSON = null;
+let backend_msgport: MessagePort;
 
-self.onmessage = async (e: MessageEvent<ChunkIOMessage>) => {
+async function messageHandler(e: MessageEvent<ChunkIOMessage>) {
 	const msg = e.data;
+
+	if (msg.type === ChunkIOMessageType.SET_BACKEND_THREAD_MSGPORT) {
+		backend_msgport = e.ports[0];
+		backend_msgport.onmessage = messageHandler;
+	}
+
+	if (!backend_msgport) {
+		throw new Error("Backend thread message port must be sent first!");
+	}
+
 	if (world_name != msg.world_name) {
 		world_name = msg.world_name;
 		setCurrentWorld(msg.world_name);
@@ -61,17 +67,16 @@ self.onmessage = async (e: MessageEvent<ChunkIOMessage>) => {
 	 * For storing, every chunk has a region assosicated with it
 	 * Region
 	 */
-	if (msg.action == "retrive") {
+	if (msg.type == ChunkIOMessageType.LOAD_CHUNK) {
 		const data = new Uint16Array(16 * 16 * 16);
 		for (let i = 0; i < 256; i++) {
 			data[i] = 1;
 		}
-		self.postMessage(
-			{
-				chunkCoord: msg.chunk_coord,
-				data: data.buffer,
-			},
-			[data.buffer],
-		);
+		backend_msgport.postMessage({
+			chunkCoord: msg.chunk_coord,
+			data: data.buffer,
+			success: true,
+		}, [data.buffer]);
 	}
 };
+self.onmessage = messageHandler;

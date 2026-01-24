@@ -5,7 +5,7 @@ import {
 	FrontendMessageType,
 	PlayerState,
 } from "../../constants";
-import { Chunk } from "./chunk";
+import { Chunk, IS_COLUMN_CHUNK } from "./chunk";
 import { Map3D, CoordinateSet } from "./utils";
 
 /**
@@ -29,8 +29,8 @@ export class World {
 	chunks = new Map3D();
 	scheduledLoad = new CoordinateSet(); // chunk coords that are scheduled for load
 	scheduledMeshing = new CoordinateSet(); // above but for meshing
-	renderXZ: 2;
-	renderY: 2;
+	renderXZ: 2; // render distance
+	renderY: 2; // mostly useless constant
 
 	/**
 	 * Will do later, it is pain
@@ -38,13 +38,9 @@ export class World {
 	 * @param isNew
 	 * @param creationStruct
 	 */
-	constructor(
-		name: string,
-		isNew: boolean,
-		creationStruct: Map<string, string | number>,
-	) {
+	constructor(name: string, creationStruct: Map<string, string | number>) {
 		this.name = name;
-		if (isNew) {
+		/*if (isNew) {
 			// first find spawn point
 			// load 9x5x9 chunks in memory and find good spawn location
 			// if fail, go find next spawn
@@ -54,7 +50,7 @@ export class World {
 			let sx = 0;
 			let sy = 100;
 			let sz = 0;
-		}
+		}*/
 		((this.px = 0), (this.py = 100), (this.pz = 0)); // should do for now
 	}
 
@@ -64,7 +60,6 @@ export class World {
 		// then closest ones
 		// we will unload chunks if they go too far away from player
 		// some of them will simply not be rendered
-
 		const [pcx, pcy, pcz] = Chunk.get_chunk_coord(
 			this.px,
 			this.py,
@@ -121,8 +116,10 @@ export class World {
 		// otherwise it wouldn't be good
 		let listOfChunksToLoadOrIDKNotLoad = [];
 		for (let i = cxmin; i <= cxmax; ++i) {
-			for (let j = cymin; j <= cymax; ++j) {
-				for (let k = czmin; k <= czmax; ++k) {
+			for (let k = czmin; k <= czmax; ++k) {
+				if (IS_COLUMN_CHUNK) {
+					listOfChunksToLoadOrIDKNotLoad.push([i, 0, k]);
+				} else for (let j = cymin; j <= cymax; ++j) {
 					listOfChunksToLoadOrIDKNotLoad.push([i, j, k]);
 				}
 			}
@@ -135,13 +132,13 @@ export class World {
 			(x, y) => d2func(x) - d2func(y),
 		);
 		for (const coord of listOfChunksToLoadOrIDKNotLoad) {
-			if (this.chunks.has(coord) || this.scheduledLoad.has(coord)) {
+			if (!(this.chunks.has(coord) || this.scheduledLoad.has(coord))) {
 				this.scheduledLoad.add(coord);
 			}
 		}
 	}
 
-	unloadChunk(c: Chunk) {}
+	unloadChunk(c: Chunk) { }
 
 	handleFrontendMessage(e: MessageEvent<FrontendMessage>) {
 		const msg = e.data;
@@ -178,13 +175,20 @@ export class World {
 		self.postMessage(msg, transfer);
 	}
 
+	sendDebugMessage(text: string) {
+		this.messageBack({
+			type: BackendMessageType.DEBUG_MSG,
+			text,
+		});
+	}
+
 	/**
 	 * This thing does meshing and returns number of chunks actually meshed
 	 */
-	meshingTask(maxMeshingAllowed: number) {}
+	meshingTask(maxMeshingAllowed: number) { }
 
 	/**
 	 * Very Very Important Method
 	 */
-	tick() {}
+	tick() { }
 }
