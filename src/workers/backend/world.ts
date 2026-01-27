@@ -32,7 +32,7 @@ export class World {
 	old_pcy: number;
 	old_pcz: number;
 
-	chunks = new Map3D();
+	chunks = new Map3D<Chunk>();
 	scheduledLoad = new CoordinateSet(); // chunk coords that are scheduled for load
 	scheduledMeshing = new CoordinateSet(); // above but for meshing
 
@@ -90,14 +90,13 @@ export class World {
 		const czmax = pcz + this.renderXZ;
 		const czmin = pcz - this.renderXZ;
 
-		console.log(cxmax, cxmin, cymax, cymin, czmax, czmin);
-
 		// first unload chunks if required
 		const totalLoadOrInLoad = this.chunks.size; //+ this.scheduledLoad.length // removed bcz idk
 		if (totalLoadOrInLoad > maxLoaded) {
 			let howManyToRemove = totalLoadOrInLoad - maxLoaded;
 			let listOfFarOnes: Chunk[] = [];
-			for (const [coord, val] of this.chunks) {
+			for (const [coord, chunk] of this.chunks) {
+				// basically get chunks not in render distance
 				if (
 					coord[0] > cxmax ||
 					coord[0] < cxmin ||
@@ -106,7 +105,7 @@ export class World {
 					coord[2] > czmax ||
 					coord[2] < czmin
 				) {
-					listOfFarOnes.push(val);
+					listOfFarOnes.push(chunk);
 				}
 			}
 			const d2func = (x: Chunk) =>
@@ -132,8 +131,6 @@ export class World {
 				}
 			}
 		}
-
-		console.log(listOfChunksToLoadOrIDKNotLoad)
 
 		const d2func = (x: Chunk) =>
 			sq(x.cx - pcx) + sq(x.cy - pcy) + sq(x.cz - pcz);

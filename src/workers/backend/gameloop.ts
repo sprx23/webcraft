@@ -35,7 +35,7 @@ export class GameLoop {
 
 	loop() {
 		const tickStart = performance.now();
-		this.gameTick();
+		this.tick();
 		const tickEnd = performance.now();
 
 		const tickMS = tickEnd - tickStart;
@@ -63,7 +63,7 @@ export class GameLoop {
 		setTimeout(() => this.loop(), wait);
 	}
 
-	gameTick() {
+	tick() {
 		if (!this.world) return;
 
 		this.world.chunkLoader();

@@ -1,11 +1,13 @@
 import { AmbientLight, Color, DirectionalLight, Mesh, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 import { BackendMessage, BackendMessageType, ChunkIOMessageType, FrontendMessageType, MAX_CHAT_LINES, PlayerState } from "./constants";
 import { registerScene } from "./scene";
-import { CoordinateSet } from "./workers/backend/utils";
+import { CoordinateSet, Map3D } from "./workers/backend/utils";
 // @ts-ignore
 import BackendWorker from "./workers/backend/backend.worker";
 // @ts-ignore
 import ChunkIOWorker from "./workers/chunkio/chunkio.worker";
+import { ChunkMesh } from "./chunkmesh";
+import { IS_COLUMN_CHUNK } from "./constants";
 
 registerScene("game", "inbuilt", () => new Game("test"));
 
@@ -36,7 +38,7 @@ export class Game {
 	old_pcx: number = null; // old values are used to determine if chunks need to be loaded
 	old_pcy: number = null;
 	old_pcz: number = null;
-	chunks: Mesh[] = []; // coordinates would be given by Mesh.name!
+	chunks: Map3D<ChunkMesh> = new Map3D(); // chunk class in /src/
 	scheduledRender = new CoordinateSet(); // backend has been told of these chunk coordinates but they can be cancelled
 
 	constructor(world_name: string) {
@@ -197,13 +199,15 @@ export class Game {
 	animate() {
 		requestAnimationFrame(this.animate);
 		this.updateMovement();
+		this.chunkScheduler();
 		this.renderer.render(this.scene, this.camera);
 	}
 
 	/**
 	 * this thing only schedules chunk render data from backend
+	 * THIS CHUNK RENDERED IS WRITTEN FOR COLUMUNAR CHUNKS!
 	 */
-	chunkRenderer() {
+	chunkScheduler() {
 		if (!this.playerState) return;
 		if (
 			this.playerState.pcx === this.old_pcx &&
@@ -212,30 +216,78 @@ export class Game {
 
 		const cxmax = this.playerState.pcx + this.playerState.renderXZ;
 		const cxmin = this.playerState.pcx - this.playerState.renderXZ;
+		const cymax = this.playerState.pcy + this.playerState.renderY;
+		const cymin = this.playerState.pcy - this.playerState.renderY;
 		const czmax = this.playerState.pcz + this.playerState.renderXZ;
 		const czmin = this.playerState.pcz - this.playerState.renderXZ;
 
-		const chunksToRender: [number, number][] = new Array(
-			this.playerState.renderXZ * this.playerState.renderXZ,
+		const chunksToRender: [number, number, number][] = new Array(
+			IS_COLUMN_CHUNK ?
+				this.playerState.renderXZ * this.playerState.renderXZ :
+				this.playerState.renderXZ * this.playerState.renderXZ * this.playerState.renderY
 		);
+
+		let i = 0;
 		for (let z = czmin; z <= czmax; z++) {
 			for (let x = cxmin; x <= cxmax; x++) {
-				chunksToRender.push([x, z]);
+				if (IS_COLUMN_CHUNK) {
+					chunksToRender[i++] = [x, 0, z];
+				} else {
+					for (let y = cymin; y <= cymax; y++) {
+						chunksToRender[i++] = [x, y, z];
+					}
+				}
 			}
 		}
-		const names = chunksToRender.map(([x, z]) => `${x},${z}`);
+
+		// I know this is inefficient way, but I dont know better way
+		const string_coords = chunksToRender.map(([x, y, z]) => `${x},${y},${z}`);
 
 		// now we know which chunks should be rendered
 		// let's first throw out chunks
-		for (let i = 0; i < this.chunks.length; i++) {
-			const chunk = this.chunks[i];
-			if (names.includes(chunk.name)) continue;
-			this.scene.remove(chunk);
-			chunk.geometry.dispose();
-			// @ts-ignore
-			chunk.material.dispose();
-			this.chunks.splice(i, 1);
+		for (const [ccoord, chunk] of this.chunks) {
+			let j: number;
+			// If chunk is already rendered, no need to render it again
+			if ((j = string_coords.indexOf(`${ccoord[0]},${ccoord[1]},${ccoord[2]}`)) != -1) {
+				chunksToRender[j] = null; // basically not render that chunk, delete its coordinate
+			} else {
+				chunk.dispose(this.scene);
+				this.chunks.delete(ccoord);
+			}
 		}
+
+		// Now we need to check if chunks are already scheduled,
+		// if they are, we will not schedule them again
+		// however if they were scheduled and are no longer needed
+		// we will cancel the scheduled chunk
+		const unschedule: [number, number, number][] = [];
+		for (const ccoord of this.scheduledRender) {
+			// first check if it is one of scheduled
+			let j: number;
+			if ((j = string_coords.indexOf(`${ccoord[0]},${ccoord[1]},${ccoord[2]}`)) != -1) {
+				chunksToRender[j] = null; // don't schedule it again
+			} else {
+				// unschedule chunk
+				unschedule.push(ccoord);
+				this.scheduledRender.delete(ccoord); // don't forget to delete it
+			}
+		}
+
+		const leftChunks = chunksToRender.filter(c => c != null);
+		const { pcx, pcy, pcz } = this.playerState;
+		// using distnace square is good for comparisions
+		const d2func = (ccoord: [number, number, number]) => {
+			const [x, y, z] = ccoord;
+			return (x - pcx) * (x - pcx) + (y - pcy) * (y - pcy) + (z - pcz) * (z - pcz);
+		};
+		const schedule = leftChunks.sort((a, b) => d2func(a) - d2func(b));
+
+		// now they are all sorted, let's communicate to backend thread
+		this.backend.postMessage({
+			type: FrontendMessageType.SCHEDULE_CHUNK_MESHING,
+			schedule,
+			unschedule
+		});
 	}
 
 	/**

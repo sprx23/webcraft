@@ -11,6 +11,7 @@ export const CHUNK_HEIGHT = 128; // basically world height
 export const REGION_SIZE = 16;
 export const TEXTURE_SIZE = 16; // must be applied for all blocks
 export const MAX_TEXTURE_ATLAS_SIZE = 4096;
+export const IS_COLUMN_CHUNK = true;
 
 // chat
 export const MAX_CHAT_LINES = 50;
@@ -49,10 +50,12 @@ export enum BackendMessageType {
 export type FrontendMessage = {
 	type: FrontendMessageType;
 	world_name?: string;
-	chunk_coord?: [number, number, number];
-	chunk_coords?: [number, number, number][];
 	playerState?: PlayerState;
 	creationStruct?: Map<string, string | number>;
+
+	// used for scheduling and unscheduling chunk meshing
+	schedule?: [number, number, number][];
+	unschedule?: [number, number, number][];
 
 	senderModId?: string;
 	recieverModId?: string;
@@ -60,12 +63,11 @@ export type FrontendMessage = {
 };
 
 export enum FrontendMessageType {
+	SET_CHUNKIO_THREAD_MSGPORT,
 	SCHEDULE_CHUNK_MESHING,
-	CANCEL_CHUNK_MESHING,
 	INIT_WORLD,
 	SYNC_PLAYER_STATE,
-	MOD_COMM,
-	SET_CHUNKIO_THREAD_MSGPORT,
+	MOD_COMM
 }
 
 export type ChunkIOMessage = {
@@ -83,7 +85,7 @@ export type ChunkIOReply = {
 export enum ChunkIOMessageType {
 	SET_BACKEND_THREAD_MSGPORT,
 	SAVE_CHUNK,
-	LOAD_CHUNK,
+	LOAD_CHUNK
 }
 
 // I guess we will not have any player class
