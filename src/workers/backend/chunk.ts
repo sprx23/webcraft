@@ -1,4 +1,4 @@
-import { CHUNK_SIZE } from "../../constants";
+import { CHUNK_SIZE, RawChunkMesh } from "../../constants";
 
 export const IS_COLUMN_CHUNK = true;
 /**
@@ -60,7 +60,7 @@ export class Chunk {
 		right: Chunk,
 		front: Chunk,
 		back: Chunk,
-	) {
+	): RawChunkMesh {
 		let idx = 0;
 		let face_count = 0;
 		let CS1 = CHUNK_SIZE - 1;

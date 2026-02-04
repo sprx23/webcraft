@@ -4,6 +4,9 @@
  * code that run on differnt threads
  */
 
+export const GAME_DATABASE_NAME = "sprx23_webcraft_FileSystem";
+export const GAME_OBJECTSTORE_NAME = "filesystem";
+
 // chunk related
 // this was once supposed to be cubic chunks but I gave up on that idea
 export const CHUNK_SIZE = 16;
@@ -30,13 +33,7 @@ export type BackendMessage = {
 	recieverModId?: string;
 	modMsg?: any;
 
-	// look in mesh() method of backend/chunk.ts
-	// for meaning of this stuff
-	u?: ArrayBuffer;
-	n?: ArrayBuffer;
-	i?: ArrayBuffer;
-	p?: ArrayBuffer;
-	t?: number;
+	rawChunkMesh?: RawChunkMesh;
 };
 
 export enum BackendMessageType {
@@ -100,4 +97,12 @@ export type PlayerState = {
 	pcz: number;
 	renderXZ: number;
 	renderY: number;
+};
+
+export type RawChunkMesh = {
+	u: ArrayBuffer;
+	n: ArrayBuffer;
+	i: ArrayBuffer;
+	p: ArrayBuffer;
+	t: number;
 };

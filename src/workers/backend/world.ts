@@ -5,6 +5,7 @@ import {
 	FrontendMessageType,
 	PlayerState,
 } from "../../constants";
+import { distSq, indexOfCoord } from "../../utils";
 import { Chunk, IS_COLUMN_CHUNK } from "./chunk";
 import { Map3D, CoordinateSet } from "./utils";
 
@@ -34,7 +35,10 @@ export class World {
 
 	chunks = new Map3D<Chunk>();
 	scheduledLoad = new CoordinateSet(); // chunk coords that are scheduled for load
-	scheduledMeshing = new CoordinateSet(); // above but for meshing
+	
+	// we need to access them by index
+	// we will not use CoordinateSet
+	scheduledMeshing: [number, number, number][] = []; // above but for meshing
 
 	/**
 	 * Will do later, it is pain
@@ -151,13 +155,18 @@ export class World {
 		const msg = e.data;
 
 		if (msg.type === FrontendMessageType.SCHEDULE_CHUNK_MESHING) {
-			for (const coord of msg.chunk_coords)
-				this.scheduledMeshing.add(coord);
-		}
 
-		if (msg.type === FrontendMessageType.CANCEL_CHUNK_MESHING) {
-			for (const coord of msg.chunk_coords)
-				this.scheduledMeshing.delete(coord);
+			// first remove those that aren't supposed to be there
+			this.scheduledMeshing = this.scheduledMeshing
+				.filter((coord) => indexOfCoord(msg.unschedule, coord) === -1);
+			// then add new ones
+			// @ts-ignore I apolozise for [number, number, number] and number[] type conflict
+			this.scheduledMeshing.splice(this.scheduledMeshing.length - 1, 0, msg.schedule);
+			// we will rearrange them by distance (closest first)
+			const pc: [number, number, number] = [this.pcx, this.pcy, this.pcz]
+			this.scheduledMeshing.sort(
+				(a, b) => distSq(a, pc) - distSq(b, pc)
+			);
 		}
 
 		if (msg.type === FrontendMessageType.SYNC_PLAYER_STATE) {

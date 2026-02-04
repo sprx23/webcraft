@@ -8,6 +8,7 @@ import BackendWorker from "./workers/backend/backend.worker";
 import ChunkIOWorker from "./workers/chunkio/chunkio.worker";
 import { ChunkMesh } from "./chunkmesh";
 import { IS_COLUMN_CHUNK } from "./constants";
+import { distSq, indexOfCoord } from "./utils";
 
 registerScene("game", "inbuilt", () => new Game("test"));
 
@@ -240,15 +241,13 @@ export class Game {
 			}
 		}
 
-		// I know this is inefficient way, but I dont know better way
-		const string_coords = chunksToRender.map(([x, y, z]) => `${x},${y},${z}`);
-
 		// now we know which chunks should be rendered
 		// let's first throw out chunks
 		for (const [ccoord, chunk] of this.chunks) {
 			let j: number;
 			// If chunk is already rendered, no need to render it again
-			if ((j = string_coords.indexOf(`${ccoord[0]},${ccoord[1]},${ccoord[2]}`)) != -1) {
+			// @ts-ignore fuck ts
+			if ((j = indexOfCoord(chunksToRender, ccoord)) != -1) {
 				chunksToRender[j] = null; // basically not render that chunk, delete its coordinate
 			} else {
 				chunk.dispose(this.scene);
@@ -264,7 +263,7 @@ export class Game {
 		for (const ccoord of this.scheduledRender) {
 			// first check if it is one of scheduled
 			let j: number;
-			if ((j = string_coords.indexOf(`${ccoord[0]},${ccoord[1]},${ccoord[2]}`)) != -1) {
+			if ((j = indexOfCoord(chunksToRender, ccoord)) != -1) {
 				chunksToRender[j] = null; // don't schedule it again
 			} else {
 				// unschedule chunk
@@ -275,12 +274,8 @@ export class Game {
 
 		const leftChunks = chunksToRender.filter(c => c != null);
 		const { pcx, pcy, pcz } = this.playerState;
-		// using distnace square is good for comparisions
-		const d2func = (ccoord: [number, number, number]) => {
-			const [x, y, z] = ccoord;
-			return (x - pcx) * (x - pcx) + (y - pcy) * (y - pcy) + (z - pcz) * (z - pcz);
-		};
-		const schedule = leftChunks.sort((a, b) => d2func(a) - d2func(b));
+		const p: [number, number, number] = [pcx, pcy, pcz]
+		const schedule = leftChunks.sort((a, b) => distSq(a, p) - distSq(b, p));
 
 		// now they are all sorted, let's communicate to backend thread
 		this.backend.postMessage({
